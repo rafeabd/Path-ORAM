@@ -2,7 +2,7 @@
 #define BUCKETS
 
 struct bucket{
-	
+
 }
 
 
