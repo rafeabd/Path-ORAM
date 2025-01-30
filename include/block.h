@@ -6,9 +6,9 @@
 struct block{
 	public:
 		int leaf;
-		int data[block_size]
+		int data[block_size];
 		
-}
+};
 
 
 #endif
