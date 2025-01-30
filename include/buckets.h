@@ -1,9 +1,13 @@
 #ifndef BUCKETS
 #define BUCKETS
 
-struct bucket{
+#include "block.h"
+#include "config.h"
 
-}
+struct bucket{
+    public:
+
+};
 
 
 #endif

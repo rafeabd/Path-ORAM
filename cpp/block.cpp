@@ -3,3 +3,7 @@
 
 using namespace std;
 
+block :: block(){
+    leaf = 0;
+    id = 0;
+};

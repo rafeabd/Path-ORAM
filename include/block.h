@@ -4,11 +4,11 @@
 #include "config.h"
 
 struct block{
-	public:
-		int leaf;
-		int data[block_size];
-		
-};
+	int leaf;
+	int id;
+	int data[block_size];
 
+	block();
+};
 
 #endif
