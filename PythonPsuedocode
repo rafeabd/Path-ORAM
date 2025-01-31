@@ -1,0 +1,58 @@
+# Initialize ORAM
+def Initialize():
+    stash = []  # Local stash to hold overflowing blocks
+    position_map = {}  # Maps each block to a random leaf
+    ORAM_tree = CreateTree(L, Z)  # Create a binary tree with height L and bucket size Z
+    for block in range(N):
+        leaf = RandomLeaf()  # Assign a random leaf to each block
+        position_map[block] = leaf
+        ORAM_tree[leaf].add(block)
+    return stash, position_map, ORAM_tree
+
+# Access operation (read or write)
+def Access(op, a, data*):
+    # Step 1: Remap the block to a new random leaf
+    x = position_map[a]  # Current leaf for block a
+    new_leaf = RandomLeaf()  # Assign a new random leaf
+    position_map[a] = new_leaf
+
+    # Step 2: Read the path from the root to the current leaf
+    path = ReadPath(x)  # Fetch all blocks along the path
+    stash.extend(path)  # Add blocks to the stash
+
+    # Step 3: Update the block if it's a write operation
+    if op == 'write':
+        for block in stash:
+            if block.id == a:
+                block.data = data*  # Update the block's data
+
+    # Step 4: Write the path back to the server, evicting blocks from the stash
+    WritePath(x, stash)  # Write the path back, evicting blocks if possible
+
+    # Step 5: Evict blocks from the stash to the ORAM tree
+    Evict(stash, ORAM_tree)
+
+# Read a path from the ORAM tree
+def ReadPath(leaf):
+    blocks = []
+    for node in PathToRoot(leaf):  # Traverse from leaf to root
+        blocks.extend(node.blocks)  # Add blocks from the node
+        node.blocks = []  # Clear the node after reading
+    return blocks
+
+# Write blocks back to a path in the ORAM tree
+def WritePath(leaf, blocks):
+    for node in PathToRoot(leaf):
+        node.blocks = SelectBlocksToStore(blocks, Z)  # Fill the node with blocks
+        blocks = [block for block in blocks if block not in node.blocks]  # Remove placed blocks
+
+# Evict blocks from the stash to the ORAM tree
+def Evict(stash, ORAM_tree):
+    for block in stash:
+        leaf = position_map[block.id]
+        path = PathToRoot(leaf)
+        for node in path:
+            if len(node.blocks) < Z:  # If there's space in the node
+                node.blocks.append(block)  # Add the block to the node
+                stash.remove(block)  # Remove the block from the stash
+                break
