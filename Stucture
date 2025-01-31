@@ -2,6 +2,10 @@ Block:
   data (Size 64)
   Block ID
   Block Leaf
+  Block_initialize()
+  read();
+  write();
+  return_id
 Bucket:
   Array (Size 4 * block)
 Stache:
