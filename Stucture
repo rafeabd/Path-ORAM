@@ -1,1 +1,7 @@
-
+Block:
+  data (Size 64)
+  Block ID
+  Block Leaf
+Bucket:
+  Array (Size 4 * block)
+Stache
