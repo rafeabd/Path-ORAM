@@ -4,4 +4,5 @@ Block:
   Block Leaf
 Bucket:
   Array (Size 4 * block)
-Stache
+Stache:
+  Array (Size LogN)
