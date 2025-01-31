@@ -6,3 +6,19 @@ Bucket:
   Array (Size 4 * block)
 Stache:
   Array (Size LogN)
+
+
+Path ORAM Pseudocode
+Data Structures
+Stash: A small local memory that temporarily holds blocks.
+
+Position Map: A dictionary that maps each block to a random leaf in the ORAM tree.
+
+ORAM Tree: A binary tree where each node is a bucket that can hold a fixed number of blocks.
+
+Parameters
+N: Number of blocks in the ORAM.
+
+Z: Number of blocks each bucket can hold.
+
+L: Height of the ORAM tree (L = log N).
