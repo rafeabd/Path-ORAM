@@ -3,12 +3,15 @@
 
 #include "config.h"
 
+using namespace std;
+
 struct block{
 	int leaf;
 	int id;
 	int data[block_size];
+	bool dummy;
 
-	block();
+	block(int, const string, bool);
 };
 
 #endif
