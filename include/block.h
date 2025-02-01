@@ -2,19 +2,16 @@
 #define BLOCK_H
 
 #include "config.h"
+#include <string>
 
-using namespace std;
+struct block {
+    int leaf;
+    int id;
+    std::string data;
+    bool dummy;
 
-struct block{
-	//block has a mapping to leaf node, id for identification,
-	//data to store the data, dummy to check if the block is dummy
-	int leaf;
-	int id;
-	int data[block_size];
-	bool dummy;
-
-	//constructor for initializing block
-	block(int, const string, bool);
+    // Constructor declaration
+    block(int id, int leaf, const std::string& data, bool dummy);
 };
 
 #endif
