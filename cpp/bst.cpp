@@ -152,3 +152,14 @@ void BinHeap :: extractMax(){
 	heapify(1);
 }
 
+vector<int> BinHeap :: extractPath(int leafIndex){
+    vector<int> path;
+    while(leafIndex>1){
+        path.push_back(A[leafIndex]);
+        leafIndex/=2;
+    }
+    path.push_back(A[1]);
+    reverse(path.begin(),path.end());
+    return path;
+}
+

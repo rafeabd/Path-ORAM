@@ -30,6 +30,7 @@ class BinHeap
         string print(); // print the heap in array order into a string
 		void heapify(int);
 		void extractMax(void);
+        vector<int> extractPath(int leafIndex);
 		
         
 };
