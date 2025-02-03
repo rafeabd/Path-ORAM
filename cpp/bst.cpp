@@ -4,7 +4,7 @@
 // 
 // C. Seshadhri, Feb 2020
 
-#include "binheap.h"
+#include "../include/bst.h"
 #include <cstdlib>
 #include <iostream>
 #include <vector>
