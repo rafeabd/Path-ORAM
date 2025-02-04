@@ -1,17 +1,34 @@
+# Compiler
 CXX = g++
-CXXFLAGS = -std=c++11 -Wall -Wextra
 
-all: wordrange
+# Compiler flags
+CXXFLAGS = -std=c++11 -Wall -Wno-deprecated-declarations -Iinclude -I/opt/homebrew/opt/openssl@3/include
+LDFLAGS = -L/opt/homebrew/opt/openssl@3/lib -lssl -lcrypto
 
-wordrange: main.o AVLTree.o
-	$(CXX) $(CXXFLAGS) -o wordrange main.o AVLTree.o
+# Ensure bin directory exists
+$(shell mkdir -p executable)
 
-main.o: main.cpp AVLTree.h
-	$(CXX) $(CXXFLAGS) -c main.cpp
+# Source files
+SRCS = $(wildcard cpp/*.cpp)
+OBJS = $(SRCS:.cpp=.o)
 
-AVLTree.o: AVLTree.cpp AVLTree.h
-	$(CXX) $(CXXFLAGS) -c AVLTree.cpp
+# Executable name
+TARGET = executable/testing
 
+# Default target
+all: $(TARGET)
+
+# Link the executable
+$(TARGET): $(OBJS)
+	$(CXX) $(CXXFLAGS) -o $@ $^ $(LDFLAGS)
+
+# General rule for compiling .cpp files to .o files
+%.o: %.cpp
+	$(CXX) $(CXXFLAGS) -c $< -o $@
+
+# Clean up build files
 clean:
-	rm -f *.o wordrange
+	rm -f $(OBJS) $(TARGET)
 
+# Phony targets
+.PHONY: all clean
