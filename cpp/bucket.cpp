@@ -1,8 +1,24 @@
-#include "../include/buckets.h"
+#include "../include/bucket.h"
+#include "block.cpp"
 
-// Constructor to initialize the bucket with dummy blocks
-bucket::bucket(int bucket_size) {
-    for (int i = 0; i < bucket_size; ++i) {
-        blocks.push_back(block(-1, -1, "", true)); // Add dummy blocks
+using namespace std;
+
+Bucket::Bucket(int capacity) : Z(capacity) {}
+
+bool Bucket::addBlock(const block& block) {
+    if (hasSpace()) {
+        blocks.push_back(block);
+        return true;
     }
+    return false;
+}
+
+vector<block> Bucket::removeAllBlocks() {
+    vector<block> removed = blocks;
+    blocks.clear();
+    return removed;
+}
+
+const vector<block>& Bucket::getBlocks() const {
+    return blocks;
 }

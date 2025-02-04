@@ -1,13 +1,8 @@
-// Filename: linkedlist.h
-// 
-// Header file for the class BinHeap that represents a Binary Heap 
-// 
-// C. Seshadhri, Jan 2020
-
 #ifndef HEAP_H
 #define HEAP_H
 
 #include <string>
+#include "block.h"
 
 using namespace std;
 
