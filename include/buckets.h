@@ -1,13 +1,13 @@
-#ifndef BUCKETS
-#define BUCKETS
+#ifndef BUCKET_H
+#define BUCKET_H
 
 #include "block.h"
-#include "config.h"
+#include <vector>
 
-struct bucket{
-    public:
+struct bucket {
+    std::vector<block> blocks;
 
+    bucket(int bucket_size);
 };
-
 
 #endif

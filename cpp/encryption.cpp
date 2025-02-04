@@ -59,6 +59,7 @@ std::vector<unsigned char> decryptData(const std::vector<unsigned char>& key, co
     return plaintext;
 }
 
+/*
 int main() {
     // Generate encryption key
     size_t key_length = 32;
@@ -104,3 +105,4 @@ int main() {
 
     return 0;
 }
+*/
