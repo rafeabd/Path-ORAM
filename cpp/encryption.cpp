@@ -18,7 +18,7 @@ std::vector<unsigned char> pseudoRandomFunction(const std::vector<unsigned char>
 
 int main() {
     std::vector<unsigned char> key = {'k', 'e', 'y'};
-    std::vector<unsigned char> data = {'d', 'a', 't', 'a'};
+    std::vector<unsigned char> data = {'v', 'e', 'b', 'q'};
     size_t length = 32; // Output length
 
     std::vector<unsigned char> result = pseudoRandomFunction(key, data, length);
