@@ -1,20 +1,29 @@
 #ifndef CLIENT_H
 #define CLIENT_H
 
-#include "bst.h"
 #include "block.h"
-#include <unordered_map>
-#include <vector>
+#include <map>
+#include <random>
+#include <memory>
+
+class Server;
 
 class Client {
-    private:
-        BinHeap oram;
-        std::unordered_map<int, int> position_map;
-        std::vector<block> stash;
+private:
+    std::shared_ptr<Server> server;
+    std::vector<block> stash;
+    std::map<int, int> position_map;
+    const int L;
+    std::mt19937 rng;
 
-    public:
-        Client(int tree_height, int bucket_size);
-        std::string access(int id, const std::string& data = "", bool is_write = false);
+    int getRandomLeaf();
+    void evict(const std::vector<block>& path);
+
+public:
+    Client(std::shared_ptr<Server> server, int num_blocks);
+
+    // op: 0 for read, 1 for write
+    block access(int op, int id, const std::string& data = "");
 };
 
 #endif

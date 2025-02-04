@@ -92,32 +92,6 @@ string BinHeap :: print()
     return heap_str;
 }
 
-void BinHeap::heapify(int index) {
-    int largest=index;
-    int left=2*index;
-    int right=2*index+1;
-
-    if(A[left]>A[largest] && left <= size ){
-        largest=left;
-    }
-    if(A[right]>A[largest] && right <= size){
-        largest=right;
-    }
-    if(largest!=index){
-        swap(A[index],A[largest]);
-        heapify(largest);
-    }
-}
-
-void BinHeap :: extractMax(){
-	if(size==0){
-		return;
-	}
-	int max = A[1];
-	A[1] = A[size--];
-	heapify(1);
-}
-
 vector<int> BinHeap :: extractPath(int leafIndex){
     vector<int> path;
     while(leafIndex>1){

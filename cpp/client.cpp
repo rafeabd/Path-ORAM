@@ -1,43 +1,69 @@
 #include "../include/client.h"
-#include <algorithm>
-#include <random>
+#include "../include/server.h"
+#include <cmath>
+#include <stdexcept>
 
-Client::Client(int tree_height, int bucket_size) : oram(tree_height, bucket_size) {
-    // Initialize the position map and stash
-    position_map.clear();
-    stash.clear();
+using namespace std;
+
+Client::Client(shared_ptr<Server> server, int num_blocks)
+    : server(server),
+    L(ceil(log2(num_blocks))),
+    rng(random_device{}()) {
+    if (!server) {
+        throw runtime_error("Server pointer cannot be null");
+    }
 }
 
-std::string Client::access(int id, const std::string& data, bool is_write) {
-    // Get the leaf node for the block
-    int leaf = position_map[id];
+block Client::access(int op, int id, const string& data) {
+    // Get or assign leaf position
+    int leaf = position_map.count(id) ? position_map[id] : getRandomLeaf();
+    position_map[id] = getRandomLeaf();  // Assign new random leaf
 
-    // Send the leaf node to the server and read the path
-    std::vector<block> path = oram.readPath(leaf);
+    // Read path and update stash
+    vector<block> path_blocks = server->readPath(leaf);
+    stash.insert(stash.end(), path_blocks.begin(), path_blocks.end());
 
-    // Add blocks from the path to the stash
-    for (auto& blk : path) {
-        if (!blk.dummy) {
-            stash.push_back(blk);
+    // Find and update target block
+    block result(id, leaf, data, 0);
+
+    for (auto& block : stash) {
+        if (block.id == id && !block.dummy) {
+            result = block;
+            if (op == 1) {  // Write operation
+                block.data = data;
+            }
+            break;
         }
     }
 
-    // Access the block in the stash
-    std::string result;
-    auto it = std::find_if(stash.begin(), stash.end(), [id](const block& blk) { return blk.id == id; });
-    if (it != stash.end()) {
-        result = it->data;
-        if (is_write) {
-            it->data = data;
-        }
-    } else if (is_write) {
-        stash.push_back(block(id, leaf, data, false));
-    }
-
-    // Update the position map
-    position_map[id] = std::rand() % (1 << oram.tree_height);
-
-    // Evict blocks from the stash to the tree - NEED TO IMPLEMENT
-
+    evict(path_blocks);
     return result;
+}
+
+int Client::getRandomLeaf() {
+    return uniform_int_distribution<>(0, (1 << L) - 1)(rng);
+}
+
+void Client::evict(const vector<block>& path) {
+    vector<block> blocks_to_write;
+
+    // Collect non-dummy blocks
+    for (const block& block : stash) {
+        if (!block.dummy) {
+            blocks_to_write.push_back(block);
+        }
+    }
+
+    // Write path and update stash
+    if (!blocks_to_write.empty()) {
+        server->writePath(position_map[blocks_to_write[0].id], blocks_to_write);
+    }
+
+    stash.clear();
+    for (const block& block : blocks_to_write) {
+        bool written = false;
+        if (!written) {
+            stash.push_back(block);
+        }
+    }
 }
