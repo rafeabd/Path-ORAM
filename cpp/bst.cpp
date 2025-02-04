@@ -1,10 +1,5 @@
-// Filename: binheap.cpp
-// 
-// Contains the class BinHeap that represents a binary heap. This file contains basic heap operations.
-// 
-// C. Seshadhri, Feb 2020
-
 #include "../include/bst.h"
+#include "../include/block.h"
 #include <cstdlib>
 #include <iostream>
 #include <vector>
@@ -67,38 +62,11 @@ void BinHeap :: resize(int new_capacity)
     delete(old); // free the old heap
 }
 
-// Return max function. Trivial, simply return A[1], which is maximum by heap property
-// Input: void
-// Output: int that is maximum value
-int BinHeap :: findMax()
-{
-    // should be careful here. If size is 0, this returns garbage, but it won't throw an error
-    // because of default capacity. We will just return A[1], and expect the caller to be careful
-    return A[1];
-}
-
-// This function "pushes" a large value towards the root, by recursively swapping with the parent. Typically, one assumes that there is a problem at this
-// index, and everything else is a heap.
-// Input: int index
-// Output: void, basically fixes the heap property at index
-void BinHeap :: swim(int index)
-{
-    if(index < 1) // BAD, shouldn't happen
-        return;
-    if(index == 1 || A[index] <= A[index/2]) // Base case: when index is 1. Or when A[index] is at most parent value
-        return;
-    // we need to swap index with parent
-    int swap = A[index];
-    A[index] = A[index/2]; 
-    A[index/2] = swap;
-    //recursive call at parent
-    swim(index/2);
-}
 
 // Insert(int val): Inserts the int val into heap. Basically, add it to the end of the array, then call swim
 // Input: Int to insert into the heap
 // Output: Void, just insert into heap
-void BinHeap :: insert(int val)
+void BinHeap :: insert(block block, int leaf)
 {
     if(size > capacity) // serious problem. This shouldn't happen. Throw error and exit
     {
@@ -106,8 +74,6 @@ void BinHeap :: insert(int val)
     }
     if(size == capacity) // we cannot add any more to the heap, so resize by doubling
         resize(2*capacity);
-    A[size+1] = val; // put value at the end of the array
-    swim(size+1); // call swim at the (new) end to fix
     size++; // increment the size
     return;
 }

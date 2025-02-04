@@ -24,12 +24,8 @@ class BinHeap
         BinHeap(int* init, int new_size, int cap); // Initialize the binary heap to an array
         void resize(int cap); // resize the underlying array to new capacity
         void deleteHeap(); // frees the array A
-        int findMax(); // output the maximum value
-        void swim(int index); // "swim" a high priority to the top of the heap
-        void insert(int); // insert int into heap
+        void insert(block,int); // insert int into heap
         string print(); // print the heap in array order into a string
-		void heapify(int);
-		void extractMax(void);
         vector<int> extractPath(int leafIndex);
 		
         
