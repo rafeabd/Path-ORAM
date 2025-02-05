@@ -1,3 +1,4 @@
+/*
 #include "bucket.h"
 
 using namespace std;
@@ -21,3 +22,4 @@ vector<Block> Bucket::removeAllBlocks() {
 const vector<Block>& Bucket::getBlocks() const {
     return blocks;
 }
+*/

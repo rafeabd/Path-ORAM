@@ -3,6 +3,7 @@
 #include <openssl/evp.h>
 #include <vector>
 #include <openssl/rand.h>
+#include "../include/encryption.h"
 
 std::vector<unsigned char> create_encrypted_id(const std::vector<unsigned char>& key, const std::vector<unsigned char>& data, size_t length) {
     std::vector<unsigned char> output(length);

@@ -1,5 +1,6 @@
 #include "../include/client.h"
 #include "../include/server.h"
+#include "../include/block.h"
 #include <cmath>
 #include <stdexcept>
 
@@ -24,7 +25,7 @@ block Client::access(int op, int id, const string& data) {
     stash.insert(stash.end(), path_blocks.begin(), path_blocks.end());
 
     // Find and update target block
-    block result(id, leaf, data, 0);
+    block result(-1, -1, "dummy", false);  // Initialize with default values
 
     for (auto& block : stash) {
         if (block.id == id && !block.dummy) {

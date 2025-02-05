@@ -1,3 +1,4 @@
+/*
 #include "server.h"
 #include <cmath>
 #include <algorithm>
@@ -69,3 +70,4 @@ void Server::initializeWithDummyBlocks() {
         }
     }
 }
+*/

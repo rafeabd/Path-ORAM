@@ -1,5 +1,5 @@
 #include "../include/server.h"
-#include "block.cpp"
+#include "../include/block.h"
 #include <cmath>
 #include <algorithm>
 
