@@ -10,8 +10,7 @@ struct block {
     std::string data;
     bool dummy;
 
-public:
-    block(int id = -1, int leaf = -1, const std::string& data = "dummy", bool dummy = 1);
+    block(int id = -1, int leaf = -1, const std::string& data = "dummy", bool dummy = true);
 };
 
 #endif
