@@ -1,6 +1,10 @@
+/*
+
 #include "../include/client.h"
 #include "../include/server.h"
 #include "../include/block.h"
+#include "../include/bst.h"
+#include "../include/encryption.h"
 #include <cmath>
 #include <stdexcept>
 
@@ -13,6 +17,15 @@ Client::Client(shared_ptr<Server> server, int num_blocks)
     if (!server) {
         throw runtime_error("Server pointer cannot be null");
     }
+
+    this->key_for_id = generateEncryptionKey(32);
+    this->key_for_data = generateEncryptionKey(32);
+
+    //Initialize oram
+    BinHeap oram();
+    //put empty buckets in oram
+    
+
 }
 
 block Client::access(int op, int id, const string& data) {
@@ -68,3 +81,5 @@ void Client::evict(const vector<block>& path) {
         }
     }
 }
+
+*/

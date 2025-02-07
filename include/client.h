@@ -10,6 +10,9 @@ class Server;
 
 class Client {
 private:
+    std::vector<unsigned char> key_for_id;
+    std::vector<unsigned char> key_for_data;
+
     std::shared_ptr<Server> server;
     std::vector<block> stash;
     std::map<int, int> position_map;
