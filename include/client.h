@@ -17,7 +17,6 @@ private:
     std::vector<block> stash;
     std::map<int, int> position_map;
     const int L;
-    std::mt19937 rng;
 
     int getRandomLeaf();
     void evict(const std::vector<block>& path);
