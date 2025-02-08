@@ -7,7 +7,7 @@
 class Bucket {
 private:
     std::vector<block> blocks;
-    int Z;  // Fixed bucket size
+    int Z;  // Bucket size
 
 public:
     explicit Bucket(int capacity = 4);
