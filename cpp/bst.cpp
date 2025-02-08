@@ -8,9 +8,14 @@
 #include <string>
 using namespace std;
 
-#define DEFAULT_CAPACITY 1000 // setting a default capacity
+#define DEFAULT_CAPACITY 1000 // default capcity - idk if we need this its a remnant from 101
 
-// Helper functions for tree navigation
+BucketHeap::BucketHeap(int numBuckets, int bucketCapacity) {
+    for (int i = 0; i < numBuckets; i++) {
+        heap.push_back(Bucket(bucketCapacity));
+    }
+}
+
 int BucketHeap::parent(int i) { 
     return (i - 1) / 2; 
 }
@@ -23,14 +28,6 @@ int BucketHeap::rightChild(int i) {
     return 2 * i + 2; 
 }
 
-// Constructor
-BucketHeap::BucketHeap(int numBuckets, int bucketCapacity) {
-    for (int i = 0; i < numBuckets; i++) {
-        heap.push_back(Bucket(bucketCapacity));
-    }
-}
-
-// Core operations
 void BucketHeap::addBucket(const Bucket& bucket) {
     heap.push_back(bucket);
 }
@@ -57,7 +54,7 @@ bool BucketHeap::addBlockToBucket(int bucketIndex, const block& b) {
     return false;
 }
 
-// Utility functions
+
 void BucketHeap::printHeap() {
     for (int i = 0; i < heap.size(); i++) {
         std::cout << "Bucket " << i << ":\n";

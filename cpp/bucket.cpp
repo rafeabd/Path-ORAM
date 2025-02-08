@@ -37,7 +37,7 @@ const vector<block>& Bucket::getBlocks() const {
 }
 
 void Bucket::print_bucket() {
-    // Only iterate through blocks that actually exist
+    // makes sure that block exists
     for (block& b : blocks) {
         b.print_block();
     }
