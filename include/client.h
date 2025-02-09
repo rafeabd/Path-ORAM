@@ -10,26 +10,28 @@
 #include <string>
 #include <vector>
 
+using namespace std;
+
 class Client {
 private:
-    std::vector<unsigned char> key_for_id;
-    std::vector<unsigned char> key_for_data;
-    std::vector<block> stash;
-    std::map<int, int> position_map;
+    vector<unsigned char> key_for_id;
+    vector<unsigned char> key_for_data;
+    vector<block> stash;
+    map<int, int> position_map;
     int L;
-    std::shared_ptr<BucketHeap> tree;  // The oram
+    shared_ptr<BucketHeap> tree;  // The oram
 
     int getRandomLeaf();
     bool isOnPath(int, int);
-    std::vector<int> getPath(int leaf);
-    std::vector<block> readPath(int leaf);
-    void writePath(int leaf, std::vector<block>& stash);
+    vector<int> getPath(int leaf);
+    vector<block> readPath(int leaf);
+    void writePath(int leaf, vector<block>& stash);
 
-    void evict(const std::vector<block>& );
+    void evict(const vector<block>& );
 
 public:
     Client(int num_blocks);
-    block access(int op, int id, const std::string& data = "");
+    block access(int op, int id, const string& data = "");
     BucketHeap* getTree();
 };
 

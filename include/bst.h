@@ -5,9 +5,11 @@
 #include "bucket.h"
 #include "block.h"
 
+using namespace std;
+
 class BucketHeap {
 private:
-    std::vector<Bucket> heap;
+    vector<Bucket> heap;
     
     int parent(int i);
     int leftChild(int i);

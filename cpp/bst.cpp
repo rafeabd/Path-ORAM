@@ -44,7 +44,7 @@ Bucket BucketHeap::removeBucket() {
 Bucket& BucketHeap::getBucket(int index) {
     if (index >= 0 && index < heap.size())
         return heap[index];
-    throw std::out_of_range("Index out of range");
+    throw out_of_range("Index out of range");
 }
 
 bool BucketHeap::addBlockToBucket(int bucketIndex, const block& b) {
@@ -57,12 +57,12 @@ bool BucketHeap::addBlockToBucket(int bucketIndex, const block& b) {
 
 void BucketHeap::printHeap() {
     for (int i = 0; i < heap.size(); i++) {
-        std::cout << "Bucket " << i << ":\n";
-        std::cout << "  Parent: " << (i > 0 ? parent(i) : -1) << "\n";
-        std::cout << "  Left Child: " << (leftChild(i) < heap.size() ? leftChild(i) : -1) << "\n";
-        std::cout << "  Right Child: " << (rightChild(i) < heap.size() ? rightChild(i) : -1) << "\n";
+        cout << "Bucket " << i << ":\n";
+        cout << "  Parent: " << (i > 0 ? parent(i) : -1) << "\n";
+        cout << "  Left Child: " << (leftChild(i) < heap.size() ? leftChild(i) : -1) << "\n";
+        cout << "  Right Child: " << (rightChild(i) < heap.size() ? rightChild(i) : -1) << "\n";
         heap[i].print_bucket();
-        std::cout << "\n";
+        cout << "\n";
     }
 }
 
