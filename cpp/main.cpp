@@ -10,35 +10,35 @@
 using namespace std;
 
 int main() {
-    std::cout << "Initializing Path ORAM with BucketHeap storage...\n";
+    cout << "Initializing Path ORAM with BucketHeap storage...\n";
     Client client(8);  // for 8 blocks - not buckets
 
-    std::cout << "\nInitial tree state:\n";
-    client.getTree()->printHeap();
+    //cout << "\nInitial tree state:\n";
+    //client.getTree()->printHeap();
 
     // Test 1: Write some blocks
-    std::cout << "\n=== Writing blocks ===\n";
+    //cout << "\n=== Writing blocks ===\n";
     client.access(1, 1, "First block");
     client.access(1, 2, "Second block");
     client.access(1, 3, "Third block");
 
-    std::cout << "\nTree state after writes:\n";
-    client.getTree()->printHeap();
+    //cout << "\nTree state after writes:\n";
+    //client.getTree()->printHeap();
 
     // Test 2: Read a block
-    std::cout << "\n=== Reading block 2 ===\n";
+    //cout << "\n=== Reading block 2 ===\n";
     block read_result = client.access(0, 2);
-    std::cout << "Read result - ID: " << read_result.id 
-                << ", Data: " << read_result.data << "\n";
+    //cout << "Read result - ID: " << read_result.id 
+    //            << ", Data: " << read_result.data << "\n";
 
-    std::cout << "\nTree state after read:\n";
-    client.getTree()->printHeap();
+    //cout << "\nTree state after read:\n";
+    //client.getTree()->printHeap();
 
     // Test 3: Update a block
-    std::cout << "\n=== Updating block 1 ===\n";
+    //cout << "\n=== Updating block 1 ===\n";
     client.access(1, 1, "Updated first block");
 
-    std::cout << "\nFinal tree state:\n";
-    client.getTree()->printHeap();
+    //cout << "\nFinal tree state:\n";
+    //client.getTree()->printHeap();
 return 0;
 }

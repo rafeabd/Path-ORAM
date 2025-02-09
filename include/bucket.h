@@ -4,17 +4,19 @@
 #include "block.h"
 #include <vector>
 
+using namespace std;
+
 class Bucket {
 private:
-    std::vector<block> blocks;
+    vector<block> blocks;
     int Z;  // Bucket size
 
 public:
     explicit Bucket(int capacity = 4);
     bool addBlock(const block& block);
-    std::vector<block> removeAllBlocks();
+    vector<block> removeAllBlocks();
     block remove_block(int);
-    const std::vector<block>& getBlocks() const;
+    const vector<block>& getBlocks() const;
     bool hasSpace() const { return blocks.size() < Z; }
     size_t size() const { return blocks.size(); }
     int capacity() const { return Z; }

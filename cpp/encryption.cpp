@@ -5,8 +5,10 @@
 #include <openssl/rand.h>
 #include "../include/encryption.h"
 
-std::vector<unsigned char> create_encrypted_id(const std::vector<unsigned char>& key, const std::vector<unsigned char>& data, size_t length) {
-    std::vector<unsigned char> output(length);
+using namespace std;
+
+vector<unsigned char> create_encrypted_id(const vector<unsigned char>& key, const vector<unsigned char>& data, size_t length) {
+    vector<unsigned char> output(length);
     unsigned int len = length;
 
     HMAC_CTX* ctx = HMAC_CTX_new();
@@ -18,17 +20,17 @@ std::vector<unsigned char> create_encrypted_id(const std::vector<unsigned char>&
     return output;
 }
 
-std::vector<unsigned char> generateEncryptionKey(size_t length) {
-    std::vector<unsigned char> key(length);
+vector<unsigned char> generateEncryptionKey(size_t length) {
+    vector<unsigned char> key(length);
     if (!RAND_bytes(key.data(), length)) {
-        throw std::runtime_error("Error generating random bytes for key");
+        throw runtime_error("Error generating random bytes for key");
     }
     return key;
 }
 
-std::vector<unsigned char> encryptData(const std::vector<unsigned char>& key, const std::vector<unsigned char>& plaintext) {
+vector<unsigned char> encryptData(const vector<unsigned char>& key, const vector<unsigned char>& plaintext) {
     EVP_CIPHER_CTX* ctx = EVP_CIPHER_CTX_new();
-    std::vector<unsigned char> ciphertext(plaintext.size() + EVP_MAX_BLOCK_LENGTH);
+    vector<unsigned char> ciphertext(plaintext.size() + EVP_MAX_BLOCK_LENGTH);
     int len;
     int ciphertext_len;
 
@@ -43,9 +45,9 @@ std::vector<unsigned char> encryptData(const std::vector<unsigned char>& key, co
     return ciphertext;
 }
 
-std::vector<unsigned char> decryptData(const std::vector<unsigned char>& key, const std::vector<unsigned char>& ciphertext) {
+vector<unsigned char> decryptData(const vector<unsigned char>& key, const vector<unsigned char>& ciphertext) {
     EVP_CIPHER_CTX* ctx = EVP_CIPHER_CTX_new();
-    std::vector<unsigned char> plaintext(ciphertext.size());
+    vector<unsigned char> plaintext(ciphertext.size());
     int len;
     int plaintext_len;
 
@@ -64,45 +66,45 @@ std::vector<unsigned char> decryptData(const std::vector<unsigned char>& key, co
 int main() {
     // Generate encryption key
     size_t key_length = 32;
-    std::vector<unsigned char> key = generateEncryptionKey(key_length);
+    vector<unsigned char> key = generateEncryptionKey(key_length);
 
     // Data to be encrypted
-    std::vector<unsigned char> plaintext = {'H', 'e', 'l', 'l', 'o', ' ', 'W', 'o', 'r', 'l', 'd'};
+    vector<unsigned char> plaintext = {'H', 'e', 'l', 'l', 'o', ' ', 'W', 'o', 'r', 'l', 'd'};
 
     // Encrypt the data
-    std::vector<unsigned char> ciphertext = encryptData(key, plaintext);
+    vector<unsigned char> ciphertext = encryptData(key, plaintext);
 
     // Decrypt the data
-    std::vector<unsigned char> decryptedtext = decryptData(key, ciphertext);
+    vector<unsigned char> decryptedtext = decryptData(key, ciphertext);
 
     // Create encrypted ID
-    std::vector<unsigned char> id_data = {'i', 'd', '_', 'd', 'a', 't', 'a'};
-    std::vector<unsigned char> encrypted_id = create_encrypted_id(key, id_data, key_length);
+    vector<unsigned char> id_data = {'i', 'd', '_', 'd', 'a', 't', 'a'};
+    vector<unsigned char> encrypted_id = create_encrypted_id(key, id_data, key_length);
 
     // Output results
-    std::cout << "Plaintext: ";
+    cout << "Plaintext: ";
     for (unsigned char c : plaintext) {
-        std::cout << c;
+        cout << c;
     }
-    std::cout << std::endl;
+    cout << endl;
 
-    std::cout << "Ciphertext: ";
+    cout << "Ciphertext: ";
     for (unsigned char c : ciphertext) {
         printf("%02x", c);
     }
-    std::cout << std::endl;
+    cout << endl;
 
-    std::cout << "Decrypted text: ";
+    cout << "Decrypted text: ";
     for (unsigned char c : decryptedtext) {
-        std::cout << c;
+        cout << c;
     }
-    std::cout << std::endl;
+    cout << endl;
 
-    std::cout << "Encrypted ID: ";
+    cout << "Encrypted ID: ";
     for (unsigned char c : encrypted_id) {
         printf("%02x", c);
     }
-    std::cout << std::endl;
+    cout << endl;
 
     return 0;
 }
