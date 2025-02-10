@@ -21,18 +21,18 @@ private:
     int L;
     shared_ptr<BucketHeap> tree;  // The oram
 
-    int getRandomLeaf();
+    
     bool isOnPath(int, int);
     vector<int> getPath(int leaf);
     vector<block> readPath(int leaf);
     void writePath(int leaf, vector<block>& stash);
 
-    void evict(const vector<block>& );
-
 public:
+    int getRandomLeaf();
     Client(int num_blocks);
     block access(int op, int id, const string& data = "");
     BucketHeap* getTree();
+    vector<block> range_query(int start, int end);
 };
 
 #endif // CLIENT_H

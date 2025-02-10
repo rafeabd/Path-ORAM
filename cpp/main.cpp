@@ -11,34 +11,36 @@ using namespace std;
 
 int main() {
     cout << "Initializing Path ORAM with BucketHeap storage...\n";
-    Client client(8);  // for 8 blocks - not buckets
+    Client client(10000);  // for x blocks - not buckets
 
-    //cout << "\nInitial tree state:\n";
-    //client.getTree()->printHeap();
+    /*
+    cout << client.getRandomLeaf() << endl;
+    cout << client.getRandomLeaf() << endl;
+    cout << client.getRandomLeaf() << endl;
+    cout << client.getRandomLeaf() << endl;
+    cout << client.getRandomLeaf() << endl;
+    cout << client.getRandomLeaf() << endl;
+    cout << client.getRandomLeaf() << endl;
+    cout << client.getRandomLeaf() << endl;
+    cout << client.getRandomLeaf() << endl;
+    cout << client.getRandomLeaf() << endl;
+    cout << client.getRandomLeaf() << endl;
+    cout << client.getRandomLeaf() << endl;
+    */
+    
 
-    // Test 1: Write some blocks
-    //cout << "\n=== Writing blocks ===\n";
-    client.access(1, 1, "First block");
-    client.access(1, 2, "Second block");
-    client.access(1, 3, "Third block");
+    for (int i = 1; i <= 10000; i++) {
+        client.access(1, i, "Block " + to_string(i));
+    }
 
-    //cout << "\nTree state after writes:\n";
-    //client.getTree()->printHeap();
+    //vector<block> path = client.range_query(1, 999);
 
-    // Test 2: Read a block
-    //cout << "\n=== Reading block 2 ===\n";
-    block read_result = client.access(0, 2);
-    //cout << "Read result - ID: " << read_result.id 
-    //            << ", Data: " << read_result.data << "\n";
+    //block b = client.access(0, 900);
+    //b.print_block();
 
-    //cout << "\nTree state after read:\n";
-    //client.getTree()->printHeap();
+    //for (int i = 0; i < 3; i++) {
+    //    path[i].print_block();
+    //}
 
-    // Test 3: Update a block
-    //cout << "\n=== Updating block 1 ===\n";
-    client.access(1, 1, "Updated first block");
-
-    //cout << "\nFinal tree state:\n";
-    //client.getTree()->printHeap();
 return 0;
 }

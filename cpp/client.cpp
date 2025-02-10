@@ -36,9 +36,14 @@ bool Client::isOnPath(int blockLeaf, int bucketIndex) {
 
 int Client::getRandomLeaf() {
     unsigned char buf[4];
+    if (RAND_bytes(buf, sizeof(buf)) != 1) {
+        throw runtime_error("Failed to generate random bytes");
+    }
     unsigned int random_value;
     memcpy(&random_value, buf, sizeof(random_value));
-    return random_value % (1 << L);
+    //return L;
+    //return random_value % (1 << L);
+    return random_value % L;
 }
 
 // Path from leaf to root
@@ -158,4 +163,12 @@ block Client::access(int op, int id, const string& data) {
 
 BucketHeap* Client::getTree() {
     return tree.get();
+}
+
+vector<block> Client::range_query(int start, int end) {
+    vector<block> result;
+    for (int i = start; i <= end; i++) {
+        result.push_back(access(0, i));
+    }
+    return result;
 }
