@@ -14,7 +14,6 @@ private:
     int parent(int i);
     int leftChild(int i);
     int rightChild(int i);
-
 public:
     BucketHeap(int numBuckets, int bucketCapacity);
     void addBucket(const Bucket& bucket);
@@ -24,6 +23,8 @@ public:
     void printHeap();
     size_t size() const;
     bool empty() const;
+    vector<block> getPathFromLeaf(int leafIndex);
+    vector<int> getPathIndices(int leaf);
 };
 
 #endif

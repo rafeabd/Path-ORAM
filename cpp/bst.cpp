@@ -1,14 +1,13 @@
 #include "../include/bst.h"
 #include "../include/block.h"
 #include "../include/bucket.h"
+#include <iostream>
 #include <cstdlib>
 #include <iostream>
 #include <vector>
 #include <algorithm>
 #include <string>
 using namespace std;
-
-#define DEFAULT_CAPACITY 1000 // default capcity - idk if we need this its a remnant from 101
 
 BucketHeap::BucketHeap(int numBuckets, int bucketCapacity) {
     for (int i = 0; i < numBuckets; i++) {
@@ -33,9 +32,6 @@ void BucketHeap::addBucket(const Bucket& bucket) {
 }
 
 Bucket BucketHeap::removeBucket() {
-    if (heap.empty())
-        return Bucket(0);
-        
     Bucket last = heap.back();
     heap.pop_back();
     return last;
@@ -54,13 +50,20 @@ bool BucketHeap::addBlockToBucket(int bucketIndex, const block& b) {
     return false;
 }
 
-
 void BucketHeap::printHeap() {
+    /*
     for (int i = 0; i < heap.size(); i++) {
         cout << "Bucket " << i << ":\n";
         cout << "  Parent: " << (i > 0 ? parent(i) : -1) << "\n";
         cout << "  Left Child: " << (leftChild(i) < heap.size() ? leftChild(i) : -1) << "\n";
         cout << "  Right Child: " << (rightChild(i) < heap.size() ? rightChild(i) : -1) << "\n";
+        heap[i].print_bucket();
+        cout << "\n";
+    }
+    */
+
+    for (int i = 0; i < heap.size(); i++) {
+        cout << "Bucket " << i << ":\n";
         heap[i].print_bucket();
         cout << "\n";
     }
@@ -74,3 +77,29 @@ bool BucketHeap::empty() const {
     return heap.empty();
 }
 
+vector<block> BucketHeap::getPathFromLeaf(int leafIndex) {
+    vector<block> path;
+    int current = leafIndex;
+    while (true) {
+        vector<block> blocks = heap[current].getBlocks();
+        path.insert(path.end(), blocks.begin(), blocks.end());
+        if (current == 0) break;  // Break once we hit the root.
+        current = parent(current);
+    }
+    reverse(path.begin(), path.end());
+    return path;
+}
+
+vector<int> BucketHeap::getPathIndices(int leaf){
+    vector<int> path;
+    int current = leaf;
+    
+    // Build path from leaf to root
+    while (current >= 0) {
+        path.push_back(current);
+        if (current == 0) break;
+        current = parent(current);
+    }
+    
+    return path;
+}

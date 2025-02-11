@@ -4,6 +4,7 @@
 #include "block.h"
 #include "bucket.h"
 #include "bst.h"
+#include "server.h"
 #include <map>
 #include <memory>
 #include <random>
@@ -19,20 +20,18 @@ private:
     vector<block> stash;
     map<int, int> position_map;
     int L;
-    shared_ptr<BucketHeap> tree;  // The oram
-
+    Server* server;  
     
-    bool isOnPath(int, int);
-    vector<int> getPath(int leaf);
+    bool isOnPath(int blockLeaf, int bucketIndex);
     vector<block> readPath(int leaf);
     void writePath(int leaf, vector<block>& stash);
-
+    
 public:
+    vector<int> getPath(int leaf);
     int getRandomLeaf();
-    Client(int num_blocks);
+    Client(int num_blocks, Server* server_ptr);
     block access(int op, int id, const string& data = "");
-    BucketHeap* getTree();
     vector<block> range_query(int start, int end);
 };
 
-#endif // CLIENT_H
+#endif 

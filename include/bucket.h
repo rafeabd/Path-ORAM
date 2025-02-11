@@ -9,7 +9,7 @@ using namespace std;
 class Bucket {
 private:
     vector<block> blocks;
-    int Z;  // Bucket size
+    int Z;  // bucket size
 
 public:
     explicit Bucket(int capacity = 4);
@@ -17,7 +17,7 @@ public:
     vector<block> removeAllBlocks();
     block remove_block(int);
     const vector<block>& getBlocks() const;
-    bool hasSpace() const { return blocks.size() < Z; }
+    bool hasSpace();
     size_t size() const { return blocks.size(); }
     int capacity() const { return Z; }
 

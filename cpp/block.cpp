@@ -11,8 +11,8 @@ block::block(int id, int leaf, const string& data, bool dummy) {
 }
 
 void block :: print_block() {
-    cout << "Block ID: " << id << endl;
-    cout << "Block Leaf: " << leaf << endl;
-    cout << "Block Data: " << data << endl;
-    cout << "Block Dummy: " << dummy << endl;
+    cout << "Block ID: " << id;
+    cout << ", Block Leaf: " << leaf;
+    cout << ", Block Data: " << data;
+    cout << ", Block Dummy: " << dummy << endl;
 }

@@ -5,12 +5,18 @@
 
 using namespace std;
 
-Bucket::Bucket(int capacity) : Z(capacity) {}
+Bucket::Bucket(int capacity) : Z(capacity) {
+    for (int i = 0; i < Z; i++) {
+        blocks.push_back(block());
+    }
+}
 
-bool Bucket::addBlock(const block& block) {
-    if (hasSpace()) {
-        blocks.push_back(block);
-        return true;
+bool Bucket::addBlock(const block& newBlock) {
+    for (block& b : blocks) {
+        if (b.dummy) {
+            b = newBlock;
+            return true;
+        }
     }
     return false;
 }
@@ -41,6 +47,16 @@ void Bucket::print_bucket() {
     for (block& b : blocks) {
         b.print_block();
     }
+}
+
+bool Bucket::hasSpace() {
+    int not_dummy = 0;
+    for (const block& b : blocks) {
+        if (!b.dummy) {
+            not_dummy++;
+        }
+    }
+    return not_dummy < Z;
 }
 
 
