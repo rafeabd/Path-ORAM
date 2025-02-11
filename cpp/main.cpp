@@ -1,46 +1,39 @@
-#include "../include/bst.h"
-#include "../include/block.h"
-#include "../include/bucket.h"
 #include "../include/client.h"
-#include "../include/encryption.h"
+#include "../include/server.h"
+#include "../include/bucket.h"
+#include "../include/bst.h"
 #include <iostream>
-#include <stdexcept>
-#include <cassert>
+#include <cmath>
+#include <memory>
+#include <utility>
 
 using namespace std;
 
 int main() {
-    cout << "Initializing Path ORAM with BucketHeap storage...\n";
-    Client client(10000);  // for x blocks - not buckets
-
-    /*
-    cout << client.getRandomLeaf() << endl;
-    cout << client.getRandomLeaf() << endl;
-    cout << client.getRandomLeaf() << endl;
-    cout << client.getRandomLeaf() << endl;
-    cout << client.getRandomLeaf() << endl;
-    cout << client.getRandomLeaf() << endl;
-    cout << client.getRandomLeaf() << endl;
-    cout << client.getRandomLeaf() << endl;
-    cout << client.getRandomLeaf() << endl;
-    cout << client.getRandomLeaf() << endl;
-    cout << client.getRandomLeaf() << endl;
-    cout << client.getRandomLeaf() << endl;
-    */
+    // initial paramameters
+    int num_blocks = 16;
+    int bucket_capacity = 4;
+    int L = ceil(log2(num_blocks));  
     
+    // num buckets in oram
+    int num_buckets = (1 << (L + 1)) - 1;
+    cout << "Initializing ORAM with " << num_buckets << " buckets." << endl;
 
-    for (int i = 1; i <= 10000; i++) {
-        client.access(1, i, "Block " + to_string(i));
-    }
+    // init oram
+    BucketHeap oram_tree(num_buckets, bucket_capacity);
+    
+    // init server
+    Server server(num_blocks, bucket_capacity, move(oram_tree));
+    
+    // init client
+    Client client(num_blocks, &server);
+    
+    cout << "Writing block id 3." << endl;
+    client.access(1, 3, "OWAM!");
+    
+    cout << "Reading block id 3." << endl;
+    block result = client.access(0, 3, "");
+    cout << "Block id: " << result.id << ", Data: " << result.data << endl;
 
-    //vector<block> path = client.range_query(1, 999);
-
-    //block b = client.access(0, 900);
-    //b.print_block();
-
-    //for (int i = 0; i < 3; i++) {
-    //    path[i].print_block();
-    //}
-
-return 0;
+    return 0;
 }

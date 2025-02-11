@@ -2,23 +2,21 @@
 #define SERVER_H
 
 #include "bucket.h"
+#include "bst.h"
 #include <vector>
 
 using namespace std;
 
 class Server {
 private:
-    vector<Bucket> tree;    // Binary tree stored as array
-    const int L;                 // Tree height
-    const int Z;                 // Bucket size
-
-    vector<int> getPathToLeaf(int leaf) const;
-    void initializeWithDummyBlocks();
-
+    BucketHeap oram;    
+    int L;              
+    int Z;              
 public:
-    Server(int num_blocks, int bucket_size = 4);
-    vector<block> readPath(int leaf);
-    void writePath(int leaf, const vector<block>& blocks);
+    Server(int num_blocks, int bucket_size, BucketHeap initialized_tree);
+    vector<block> give_path(int leaf);
+    
+    bool write_block_to_path(const block& b, int leaf);
 };
 
-#endif
+#endif 
