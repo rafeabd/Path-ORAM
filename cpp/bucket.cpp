@@ -2,16 +2,21 @@
 #include "../include/block.h"
 
 #include <iostream>
+#include <vector>
 
 using namespace std;
 
 Bucket::Bucket(int capacity) : Z(capacity) {
+    // Initialize the bucket with dummy blocks.
     for (int i = 0; i < Z; i++) {
         blocks.push_back(block());
     }
 }
 
 bool Bucket::addBlock(const block& newBlock) {
+    if (!hasSpace()) {
+        return false;
+    }
     for (block& b : blocks) {
         if (b.dummy) {
             b = newBlock;
@@ -43,7 +48,7 @@ const vector<block>& Bucket::getBlocks() const {
 }
 
 void Bucket::print_bucket() {
-    // makes sure that block exists
+    // Print each block in the bucket.
     for (block& b : blocks) {
         b.print_block();
     }
@@ -58,26 +63,3 @@ bool Bucket::hasSpace() {
     }
     return not_dummy < Z;
 }
-
-
-// Test function to make sure block and bucket work togethor...seems like they do.
-/*
-int main() {
-    block test_block(1,2,"test",false);
-    block test_block_1(2,3,"test1",false);
-    block test_block_2(3,4,"test2",false);
-    block test_block_3(4,5,"test3",false);
-
-    Bucket test_bucket(4);
-    test_bucket.addBlock(test_block);
-    test_bucket.addBlock(test_block_1);
-    test_bucket.addBlock(test_block_2);
-    test_bucket.addBlock(test_block_3);
-
-    test_bucket.print_bucket();
-    cout << "Removing block 2" << endl;
-    test_bucket.remove_block(2);
-    test_bucket.print_bucket();
-    return 0;
-}
-*/

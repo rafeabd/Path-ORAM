@@ -23,8 +23,8 @@ private:
     Server* server;  
     
     bool isOnPath(int blockLeaf, int bucketIndex);
-    vector<block> readPath(int leaf);
-    void writePath(int leaf, vector<block>& stash);
+    vector<Bucket> readPath(int leaf);
+    void writePath(int leaf, vector<block>& stash, vector<Bucket>& path_buckets);
     
 public:
     vector<int> getPath(int leaf);
@@ -32,6 +32,7 @@ public:
     Client(int num_blocks, Server* server_ptr);
     block access(int op, int id, const string& data = "");
     vector<block> range_query(int start, int end);
+    void print_stash();
 };
 
 #endif 

@@ -11,13 +11,14 @@ using namespace std;
 
 int main() {
     // initial paramameters
-    int num_blocks = 16;
+    int num_blocks = 5000;
     int bucket_capacity = 4;
-    int L = ceil(log2(num_blocks));  
+    //int L = ceil(num_blocks/4);
+    int L = ceil(log2(num_blocks));
     
     // num buckets in oram
     int num_buckets = (1 << (L + 1)) - 1;
-    cout << "Initializing ORAM with " << num_buckets << " buckets." << endl;
+    cout << "Initializing oram with " << num_buckets << " buckets." << endl;
 
     // init oram
     BucketHeap oram_tree(num_buckets, bucket_capacity);
@@ -27,13 +28,32 @@ int main() {
     
     // init client
     Client client(num_blocks, &server);
+    //server.printHeap();
     
-    cout << "Writing block id 3." << endl;
-    client.access(1, 3, "OWAM!");
     
-    cout << "Reading block id 3." << endl;
-    block result = client.access(0, 3, "");
-    cout << "Block id: " << result.id << ", Data: " << result.data << endl;
+    cout << "Writing blocks." << endl;
+    for (int i = 0; i < 32000; i++) {
+        string data = to_string(i);
+        client.access(1, i, data);
+    }
+    //cout << "printing oram" << endl;
+    //server.printHeap();
+    //cout << "printing stash" << endl;
+    //client.print_stash();
+    
+
+    /*
+    client.access(1, 0, "first block");
+    cout << "printing oram" << endl;
+    server.printHeap();
+    cout << "printing stash" << endl;
+    client.print_stash();
+    */
+
+    //client.access(0, 3, "").print_block();
+
+    //client.print_stash();
+    //server.printHeap();
 
     return 0;
 }
