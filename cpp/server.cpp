@@ -14,19 +14,22 @@ Server::Server(int num_blocks, int bucket_size, BucketHeap initialized_tree)
       L(ceil(log2(num_blocks))),
       oram(move(initialized_tree)) {}
 
-vector<block> Server::give_path(int leaf) {
-    return oram.getPathFromLeaf(leaf);
+vector<Bucket> Server::give_path(int leaf) {
+    int bucket_index = leaf + ((1 << L) - 1);
+    vector<Bucket> path = oram.getPathBuckets(bucket_index);
+    
+    vector<int> pathIndices = oram.getPathIndices(bucket_index);
+    for (int idx : pathIndices) {
+        oram.clear_bucket(idx);  
+    }
+    
+    return path;
 }
 
-bool Server::write_block_to_path(const block& b, int leaf) {
-    vector<int> path = oram.getPathIndices(leaf);
-    
-    // tries to place block in the path if there is space. if not, returns false.
-    for (auto it = path.rbegin(); it != path.rend(); ++it) {
-        int bucket_index = *it;
-        if (oram.addBlockToBucket(bucket_index, b)) {
-            return true;
-        }
-    }
-    return false;
+void Server::write_bucket(const Bucket& path, int bucket_index) {
+    oram.updateBucket(bucket_index, path);
+}
+
+void Server::printHeap() {
+    oram.printHeap();
 }

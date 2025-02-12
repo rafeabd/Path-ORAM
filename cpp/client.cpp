@@ -10,6 +10,7 @@
 #include <stdexcept>
 #include <cmath>
 #include <algorithm>
+#include <unordered_set>
 
 using namespace std;
 
@@ -17,12 +18,15 @@ Client::Client(int num_blocks, Server* server_ptr) : L(ceil(log2(num_blocks))), 
     key_for_id = generateEncryptionKey(32);
     key_for_data = generateEncryptionKey(32);
     
+    // Initialize the position map with random leaves in leaf space ([0, (1<<L)-1]).
     for (int i = 0; i < num_blocks; i++) {
         position_map[i] = getRandomLeaf();
     }
+    stash.reserve(log2(num_blocks));
 }
 
-// make sure block is on the path
+// Check if a block’s assigned leaf is on the current access path.
+// Note: both parameters are in leaf space. getPath converts a leaf to bucket indices.
 bool Client::isOnPath(int blockLeaf, int bucketIndex) {
     vector<int> blockPath = getPath(blockLeaf);
     return find(blockPath.begin(), blockPath.end(), bucketIndex) != blockPath.end();
@@ -38,10 +42,10 @@ int Client::getRandomLeaf() {
     return random_value % (1 << L);
 }
 
-// Compute path from leaf to root.
+// Compute the path from the block's leaf (in leaf space) to the root (bucket indices).
 vector<int> Client::getPath(int leaf) {
     vector<int> path;
-    int node = leaf + ((1 << L) - 1);
+    int node = leaf + ((1 << L) - 1);  // Convert to bucket index.
     while (node >= 0) {
         path.push_back(node);
         if (node == 0) break;
@@ -50,66 +54,105 @@ vector<int> Client::getPath(int leaf) {
     return path;
 }
 
-// server readpath
-vector<block> Client::readPath(int leaf) {
+// Reads a path from the server. The server converts leaf space to bucket space.
+vector<Bucket> Client::readPath(int leaf) {
     return server->give_path(leaf);
 }
 
-// lowkey eviction!
-void Client::writePath(int leaf, vector<block>& stash) {
-    vector<int> path = getPath(leaf);
-    for (auto it = stash.begin(); it != stash.end(); ) {
-        // write back for blocks in stash. dummy and normal
-        if (isOnPath(it->leaf, leaf)) {
-            if (server->write_block_to_path(*it, leaf)) {
-                // only remove block if succesfully writeen
-                it = stash.erase(it);  
-                continue;
+void Client::writePath(int leaf, vector<block>& stash, vector<Bucket>& path_buckets) {
+    // Compute global path indices (from root to leaf).
+    vector<int> global_path = getPath(leaf);
+    reverse(global_path.begin(), global_path.end());
+    
+    if (global_path.size() != path_buckets.size()) {
+        throw runtime_error("Mismatch between global path and path_buckets lengths");
+    }
+    
+    // For each bucket in the path:
+    for (size_t i = 0; i < path_buckets.size(); i++) {
+        Bucket &bucket = path_buckets[i];
+        
+        // Clear the bucket to remove any stale data.
+        bucket = Bucket();  // Z is the bucket capacity.
+        
+        // Try to fill the bucket from the stash with eligible blocks.
+        for (auto it = stash.begin(); it != stash.end(); ) {
+            if (isOnPath(it->leaf, global_path[i]) && bucket.hasSpace()) {
+                bucket.addBlock(*it);
+                it = stash.erase(it);
             } else {
-                cout << "Block " << it->id << " could not be written." << endl;
+                ++it;
             }
         }
-        ++it;
+        
+        // Write this fresh bucket to the server.
+        server->write_bucket(bucket, global_path[i]);
     }
 }
 
 
 
-// op 1 is write, op 0 is read
+// op = 1 for write, op = 0 for read.
 block Client::access(int op, int id, const string& data) {
+    // get leaf.
+    int leaf = (position_map.count(id)) ? position_map[id] : getRandomLeaf(); //need to check
+    // new random leaf
+    int new_leaf = getRandomLeaf();
+    position_map[id] = new_leaf;
     
-    // get current leaf index and find a new one
-    int leaf = (position_map.count(id)) ? position_map[id] : getRandomLeaf();
-    position_map[id] = getRandomLeaf();
-    
-    // get whole path
-    vector<block> path_blocks = readPath(leaf);
-    stash.insert(stash.end(), path_blocks.begin(), path_blocks.end());
+    // get path in the form of buckets
+    vector<Bucket> path_buckets = readPath(leaf);
 
-    // for finding the block we want
+    //adding buckets to stash    
+    for (const Bucket &bucket : path_buckets) {
+        // If a block with the same id is already in the stash, update it; else insert.
+        for (const block &b : bucket.getBlocks()) {
+            bool found = false;
+            for (block &s : stash) {
+                if (s.id == b.id) {
+                    s = b;  // Update to the latest version.
+                    found = true;
+                    break;
+                }
+            }
+            if (!found){
+                stash.push_back(b);
+            }
+        }
+    }
+
+    // Try to find the block we want.
     block result(-1, -1, "dummy", true);
     bool found = false;
-    for (auto& blk : stash) {
+    for (auto &blk : stash) {
         if (blk.id == id) {
+            blk.leaf = new_leaf;
             result = blk;
             found = true;
-            if (op == 1) { 
+            if (op == 1) { // For write operations, update the block.
                 blk.data = data;
                 blk.dummy = false;
             }
             break;
         }
     }
-    // idk if this is necessary but it wouldn't run without. If a block doesn't exist,
-    // it makes it and adds it.
+    // If the block was not found and this is a write, create a new block.
     if (!found && op == 1) {
-        block new_block(id, leaf, data, false);
+        block new_block(id, new_leaf, data, false);
         stash.push_back(new_block);
         result = new_block;
     }
     
-    // highkey evict
-    writePath(leaf, stash);
+    // Attempt to evict eligible blocks along the path.
+    writePath(leaf, stash, path_buckets);
     
     return result;
+}
+
+
+//print stash
+void Client::print_stash(){
+    for (block b : stash){
+        b.print_block();
+    }
 }

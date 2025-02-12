@@ -53,6 +53,13 @@ Bucket& BucketHeap::getBucket(int index) {
     throw out_of_range("Index out of range");  // Throw an exception if index is invalid.
 }
 
+void BucketHeap::updateBucket(int index, const Bucket& bucket) {
+    if (index >= 0 && index < heap.size())
+        heap[index] = bucket;
+    else
+        throw out_of_range("Index out of range");
+}
+
 // Adds a Block to a specific Bucket in the heap.
 bool BucketHeap::addBlockToBucket(int bucketIndex, const block& b) {
     if (bucketIndex >= 0 && bucketIndex < heap.size()) {
@@ -104,6 +111,18 @@ vector<block> BucketHeap::getPathFromLeaf(int leafIndex) {
     return path;
 }
 
+vector<Bucket> BucketHeap::getPathBuckets(int leafIndex) {
+    vector<Bucket> path;
+    int current = leafIndex;
+    while (true) {
+        path.push_back(heap[current]);
+        if (current == 0) break;  // Break once we hit the root.
+        current = parent(current);
+    }
+    reverse(path.begin(), path.end());
+    return path;
+}
+
 // Returns a vector of indices representing the path from a leaf to the root.
 vector<int> BucketHeap::getPathIndices(int leaf){
     vector<int> path;  // Vector to store the indices of the path.
@@ -117,5 +136,9 @@ vector<int> BucketHeap::getPathIndices(int leaf){
         current = parent(current);  // Move up to the parent.
     }
     
-    return path;  // Return the list of indices representing the path.
+    return path;
+}
+
+void BucketHeap::clear_bucket(int index) {
+    heap[index] = Bucket();
 }

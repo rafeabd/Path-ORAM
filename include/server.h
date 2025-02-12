@@ -14,9 +14,9 @@ private:
     int Z;              
 public:
     Server(int num_blocks, int bucket_size, BucketHeap initialized_tree);
-    vector<block> give_path(int leaf);
-    
-    bool write_block_to_path(const block& b, int leaf);
+    vector<Bucket> give_path(int leaf);
+    void write_bucket(const Bucket& path, int bucket_index);
+    void printHeap();
 };
 
 #endif 
