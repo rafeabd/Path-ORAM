@@ -91,7 +91,7 @@ vector<block> BucketHeap::getPathFromLeaf(int leafIndex) {
     while (true) {
         vector<block> blocks = heap[current].getBlocks();
         path.insert(path.end(), blocks.begin(), blocks.end());
-        if (current == 0) break;  // Break once we hit the root.
+        if (current == 0) break;  
         current = parent(current);
     }
     reverse(path.begin(), path.end());
@@ -103,7 +103,7 @@ vector<Bucket> BucketHeap::getPathBuckets(int leafIndex) {
     int current = leafIndex;
     while (true) {
         path.push_back(heap[current]);
-        if (current == 0) break;  // Break once we hit the root.
+        if (current == 0) break;  
         current = parent(current);
     }
     reverse(path.begin(), path.end());
