@@ -3,10 +3,11 @@
 #include "../include/bucket.h"
 #include <iostream>
 #include <cstdlib>
-#include <iostream>
 #include <vector>
 #include <algorithm>
 #include <string>
+#include <iomanip>
+#include <cmath>
 using namespace std;
 
 // Constructor for the BucketHeap class.

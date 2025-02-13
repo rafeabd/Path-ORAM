@@ -1,5 +1,10 @@
 #include "../include/block.h"
+#include "../include/encryption.h"
 #include <iostream>
+#include <cstring>
+#include <iostream>
+#include <sstream>
+#include <iomanip>
 
 using namespace std;
 
