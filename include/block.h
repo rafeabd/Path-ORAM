@@ -6,6 +6,7 @@
 
 using namespace std;
 
+
 struct block {
     int leaf;
     int id;

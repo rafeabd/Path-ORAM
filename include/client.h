@@ -17,14 +17,14 @@ class Client {
 private:
     vector<unsigned char> key_for_id;
     vector<unsigned char> key_for_data;
-    vector<block> stash;
+    unordered_map<int, block> stash;
     map<int, int> position_map;
     int L;
     Server* server;  
     
     bool isOnPath(int blockLeaf, int bucketIndex);
     vector<Bucket> readPath(int leaf);
-    void writePath(int leaf, vector<block>& stash, vector<Bucket>& path_buckets);
+    void writePath(int leaf, vector<Bucket>& path_buckets);
     
 public:
     vector<int> getPath(int leaf);
