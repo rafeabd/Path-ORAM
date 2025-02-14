@@ -10,12 +10,14 @@ using namespace std;
 class BucketHeap {
 private:
     vector<Bucket> heap;
+    int bucketCapacity;
+    vector<unsigned char> encryptionKey;
     
     int parent(int i);
     int leftChild(int i);
     int rightChild(int i);
 public:
-    BucketHeap(int numBuckets, int bucketCapacity);
+    BucketHeap(int numBuckets, int bucketCapacity, const vector<unsigned char>& encryptionKey);
     void addBucket(const Bucket& bucket);
     Bucket removeBucket();
     Bucket& getBucket(int index);

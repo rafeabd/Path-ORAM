@@ -26,6 +26,23 @@ bool Bucket::addBlock(const block& newBlock) {
     return false;
 }
 
+bool Bucket::startaddblock(block& newBlock) {
+    // If we haven't reached capacity, add the block
+    if (blocks.size() < Z) {
+        blocks.push_back(newBlock);
+        return true;
+    }
+    // try to replace a dummy block
+    for (block &b : blocks) {
+        if (b.dummy) {
+            b = newBlock;
+            return true;
+        }
+    }
+    return false;
+}
+
+
 vector<block> Bucket::removeAllBlocks() {
     vector<block> removed = blocks;
     blocks.clear();
@@ -43,12 +60,11 @@ block Bucket::remove_block(int id) {
     return block();
 }
 
-const vector<block>& Bucket::getBlocks() const {
+vector<block>& Bucket::getBlocks(){
     return blocks;
 }
 
 void Bucket::print_bucket() {
-    // Print each block in the bucket.
     for (block& b : blocks) {
         b.print_block();
     }
@@ -62,4 +78,8 @@ bool Bucket::hasSpace() {
         }
     }
     return not_dummy < Z;
+}
+
+void Bucket::clear() {
+    blocks.clear();
 }

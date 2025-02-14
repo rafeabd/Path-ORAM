@@ -1,6 +1,7 @@
 #include "../include/bst.h"
 #include "../include/block.h"
 #include "../include/bucket.h"
+#include "../include/encryption.h"
 #include <iostream>
 #include <cstdlib>
 #include <vector>
@@ -10,9 +11,20 @@
 #include <cmath>
 using namespace std;
 
-BucketHeap::BucketHeap(int numBuckets, int bucketCapacity) {
+BucketHeap::BucketHeap(int numBuckets, int bucketCapacity, const vector<unsigned char>& encKey)
+    : bucketCapacity(bucketCapacity), encryptionKey(encKey)
+{
     for (int i = 0; i < numBuckets; i++) {
-        heap.push_back(Bucket(bucketCapacity));
+        Bucket bucket(bucketCapacity);
+        // this is dumb but need to clear buckets after they have been initialized
+        bucket.clear();
+        //add encrypted dummy blocks to oram buckets
+        for (int j = 0; j < bucketCapacity; j++) {
+            block dummyBlock(-1, -1, "dummy", true);
+            dummyBlock = encryptBlock(dummyBlock, encryptionKey);
+            bucket.startaddblock(dummyBlock);
+        }
+        heap.push_back(bucket);
     }
 }
 
@@ -100,6 +112,7 @@ vector<block> BucketHeap::getPathFromLeaf(int leafIndex) {
 
 vector<Bucket> BucketHeap::getPathBuckets(int leafIndex) {
     vector<Bucket> path;
+    
     int current = leafIndex;
     while (true) {
         path.push_back(heap[current]);
@@ -112,8 +125,8 @@ vector<Bucket> BucketHeap::getPathBuckets(int leafIndex) {
 
 vector<int> BucketHeap::getPathIndices(int leaf){
     vector<int> path;
-    int current = leaf;
     
+    int current = leaf;
     // Build path from leaf to root
     while (current >= 0) {
         path.push_back(current);
@@ -125,5 +138,12 @@ vector<int> BucketHeap::getPathIndices(int leaf){
 }
 
 void BucketHeap::clear_bucket(int index) {
-    heap[index] = Bucket();
+    // Reinitialize bucket with encrypted dummy blocks
+    Bucket newBucket(bucketCapacity);
+    for (int j = 0; j < bucketCapacity; j++) {
+        block dummyBlock(-1, -1, "dummy", true);
+        dummyBlock = encryptBlock(dummyBlock, encryptionKey);
+        newBucket.addBlock(dummyBlock);
+    }
+    heap[index] = newBucket;
 }

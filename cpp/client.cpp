@@ -14,9 +14,8 @@
 
 using namespace std;
 
-Client::Client(int num_blocks, Server* server_ptr) : L(ceil(log2(num_blocks))), server(server_ptr) {
-    key_for_id = generateEncryptionKey(32);
-    key_for_data = generateEncryptionKey(32);
+Client::Client(int num_blocks, Server* server_ptr, const vector<unsigned char>& encryptionKey) 
+    : L(ceil(log2(num_blocks))), server(server_ptr), key(encryptionKey) {
     
     // position map with random leafs
     for (int i = 0; i < num_blocks; i++) {
@@ -53,20 +52,22 @@ vector<int> Client::getPath(int leaf) {
     return path;
 }
 
-// Reads a path from the server. The server converts leaf space to bucket space.
+// Reads a path from the server. The server converts leaf space to bucket space
 vector<Bucket> Client::readPath(int leaf) {
-    return server->give_path(leaf);
+    vector<Bucket> path_buckets = server->give_path(leaf);
+    for (Bucket &bucket : path_buckets) {
+        for (block &b : bucket.getBlocks()) {
+            //cout << "Decrypting block with data length: " << b.data.size() << " and data: " << b.data << endl; 
+            b = decryptBlock(b, key);
+        }
+    }
+    return path_buckets;
 }
 
 void Client::writePath(int leaf, vector<Bucket>& path_buckets) {
-    // bucket indices from leaf to root - leaf + offset to the root.
+    // get bucket path and ranges for the leafs they can fit to
     vector<int> global_path = getPath(leaf);
-    // root to leaf
     reverse(global_path.begin(), global_path.end());
-    
-    // find range of leafs for every bucket - this gets around using 
-    //isonpath and makes it a lot faster because you don't have to check every block,
-    // but it changes eviction a little so we need to check this.
     vector<pair<int, int>> bucket_ranges;
     for (int bucketIndex : global_path) {
         int level = static_cast<int>(floor(log2(bucketIndex + 1)));
@@ -75,51 +76,46 @@ void Client::writePath(int leaf, vector<Bucket>& path_buckets) {
         bucket_ranges.push_back({leftMost, rightMost});
     }
     
-    // reset block.
-    for (Bucket &bucket : path_buckets) {
-        bucket = Bucket(); 
+    // initialize each bucket with encrypted dummy blocks
+    for (size_t i = 0; i < path_buckets.size(); i++) {
+        Bucket newBucket(4);
+        for (int j = 0; j < 4; j++) {
+            block dummyBlock(-1, -1, "dummy", true);
+            // encrypt dummies
+            dummyBlock = encryptBlock(dummyBlock, key);
+            newBucket.addBlock(dummyBlock);
+        }
+        path_buckets[i] = newBucket;
     }
     
-    //for each block, determine the deepest bucket
-    //along the access path where it fits.
-
-    // get keys.
-    vector<int> keys;
+    // Place blocks from stash into the deepest bucket along the path where they fit
     for (const auto &pair : stash) {
-        keys.push_back(pair.first);
-    }
-    
-    for (int key : keys) {
-        //block in stash
-        block &b = stash[key];
+        block b = pair.second;
         int assigned_index = -1;
-        
-        // start from leaf
         for (int i = static_cast<int>(global_path.size()) - 1; i >= 0; i--) {
-            // if leaf fits the bucket range, assign it to the bucket.
             if (b.leaf >= bucket_ranges[i].first && b.leaf <= bucket_ranges[i].second) {
                 assigned_index = i;
                 break;
             }
         }
-        
-        // try to fit block in good buckets.
         if (assigned_index != -1 && path_buckets[assigned_index].hasSpace()) {
             path_buckets[assigned_index].addBlock(b);
-            stash.erase(key);
         }
     }
-
-    //actual server interaction    
+    
+    // encrypt at the end;
+    for (Bucket &bucket : path_buckets) {
+        for (block &b : bucket.getBlocks()) {
+            b = encryptBlock(b, key);
+        }
+    }
+    
+    // Send encrypted buckets to the server
     for (size_t i = 0; i < global_path.size(); i++) {
+        //path_buckets[i].print_bucket();
         server->write_bucket(path_buckets[i], global_path[i]);
     }
 }
-
-
-
-
-
 
 // op = 1 for write, op = 0 for read.
 block Client::access(int op, int id, const string& data) {
@@ -132,25 +128,26 @@ block Client::access(int op, int id, const string& data) {
     vector<Bucket> path_buckets = readPath(leaf);
 
     // update stash
-    for (const Bucket &bucket : path_buckets) {
-        for (const block &b : bucket.getBlocks()) {
+    for (Bucket &bucket : path_buckets) {
+        for (block &b : bucket.getBlocks()) {
             stash[b.id] = b;
         }
     }
 
-    // find block we want in stash
-    block result(-1, -1, "dummy", true);
+    // init dummy and encrypt
+    block result = encryptBlock(block(-1, -1, "dummy", true), key);
+    
     auto it = stash.find(id);
     if (it != stash.end()) {
-        //put new leaf
+        // put new leaf
         it->second.leaf = new_leaf;
         result = it->second;
-        if (op == 1) { //for writing
+        if (op == 1) { // for writing
             it->second.data = data;
             it->second.dummy = false;
         }
     } else if (op == 1) {
-        // incase the id doesn't exist in current stash, make a block
+        // in case the id doesn't exist in current stash, make a block
         block new_block(id, new_leaf, data, false);
         stash.insert({id, new_block});
         result = new_block;
@@ -161,8 +158,6 @@ block Client::access(int op, int id, const string& data) {
     
     return result;
 }
-
-
 
 //print stash
 void Client::print_stash() {
