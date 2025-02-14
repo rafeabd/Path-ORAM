@@ -14,7 +14,7 @@ using namespace std;
 
 int main() {
     // initial parameters
-    int num_buckets_low = 1000; // lower bound for buckets - fixed
+    int num_buckets_low = 5; // lower bound for buckets - fixed
     cout << "num buckets" << num_buckets_low << endl;
     int bucket_capacity = 4;
     int L = ceil(log2(num_buckets_low));
@@ -50,9 +50,10 @@ int main() {
     infile.close();
 
     // Example read accesses:
-    cout << "Read Blocks:" << endl;
-    client.access(0, 0, "").print_block();
-    client.access(0, 9, "").print_block();
+    cout << "Reading Blocks:" << endl;
+    for (int i = 0; i < 10; i++) {
+        client.access(0, i, "").print_block();
+    }
 
     /*
     cout << "range query" << endl;
@@ -63,9 +64,9 @@ int main() {
     */
 
     cout << "printing server view" << endl;
-    //server.printHeap();
+    server.printHeap();
     cout << "Printing stash:" << endl;
-    //client.print_stash();
+    client.print_stash();
 
     return 0;
 }
