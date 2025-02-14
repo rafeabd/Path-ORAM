@@ -167,7 +167,11 @@ vector<unsigned char> decryptData(const vector<unsigned char>& key, const vector
 // make it so all block info can be stored in just the data
 string serializeBlock(const block &b) {
     ostringstream oss;
-    oss << b.id << "|" << b.leaf << "|" << (b.dummy ? "1" : "0") << "|" << b.data;
+    oss << b.id << "|" << b.leaf << "|" << (b.dummy ? "1" : "0") << "|";
+    // Pad data to fixed 20 characters
+    string paddedData = b.data;
+    paddedData.resize(20, ' ');
+    oss << paddedData;
     return oss.str();
 }
 
@@ -183,6 +187,10 @@ block deserializeBlock(const string &s) {
     bool dummy = (token == "1");
     string data;
     getline(iss, data);
+    // Remove padding spaces
+    while (!data.empty() && data.back() == ' ') {
+        data.pop_back();
+    }
     return block(id, leaf, data, dummy);
 }
 
