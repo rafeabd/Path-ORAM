@@ -142,10 +142,10 @@ vector<int> BucketHeap::getPathIndices(int leaf){
     int current = leaf;
     // Build path from leaf to root
     while (current >= 0) {
-        path.push_back(current);  // Add the current index to the path.
+        path.push_back(current);  // Add the current index to the path
 
-        if (current == 0) break;  // Stop when reaching the root.
-        current = parent(current);  // Move up to the parent.
+        if (current == 0) break;  // Stop when reaching the root
+        current = parent(current);  // Move up to the parent
     }
     
     return path;

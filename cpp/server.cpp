@@ -21,8 +21,8 @@ vector<Bucket> Server::give_path(int leaf) {
     vector<int> pathIndices = oram.getPathIndices(bucket_index);
     vector<Bucket> path = oram.getPathBuckets(bucket_index);
 
-    for (int idx : pathIndices) {
-        oram.clear_bucket(idx);  
+    for (int id : pathIndices) {
+        oram.clear_bucket(id);  
     }
     return path;
 }

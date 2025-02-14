@@ -33,24 +33,30 @@ int main() {
     //server.printHeap();
     
     cout << "Writing blocks." << endl;
-    for (int i = 0; i < 1000; i++) {
+    for (int i = 0; i < 2000; i++) {
         string data = to_string(i);
         client.access(1, i, data);
     }
     
 
-    cout << "reading blocks" << endl;
+    //cout << "reading blocks" << endl;
+    cout << "trying to read" << endl;
     client.access(0,48,"").print_block();
     client.access(0,86,"").print_block();
-    //client.access(0,508075,"").print_block();
+    client.access(0,1834,"").print_block();
+    client.access(0,1834,"").print_block();
+    client.access(0,1834,"").print_block();
+    client.access(0,1834,"").print_block();
+    client.access(0,1834,"").print_block();
+    client.access(0,1834,"").print_block();
 
     //server.printHeap();
     //server.printHeap();
 
     //cout << "printing oram" << endl;
     //server.printHeap();
-    //cout << "printing stash" << endl;
-    //client.print_stash();
+    cout << "printing stash" << endl;
+    client.print_stash();
 
     /*
     client.access(1, 0, "first block");
