@@ -67,6 +67,7 @@ vector<Bucket> Client::readPath(int leaf) {
 void Client::writePath(int leaf, vector<Bucket>& path_buckets) {
     // get bucket path and ranges for the leafs they can fit to
     vector<int> global_path = getPath(leaf);
+    // root to leaf
     reverse(global_path.begin(), global_path.end());
     vector<pair<int, int>> bucket_ranges;
     for (int bucketIndex : global_path) {
@@ -76,7 +77,7 @@ void Client::writePath(int leaf, vector<Bucket>& path_buckets) {
         bucket_ranges.push_back({leftMost, rightMost});
     }
     
-    // initialize each bucket with encrypted dummy blocks
+    // initialize each bucket with dummy blocks
     for (size_t i = 0; i < path_buckets.size(); i++) {
         Bucket newBucket(4);
         for (int j = 0; j < 4; j++) {

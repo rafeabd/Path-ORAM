@@ -10,8 +10,8 @@ using namespace std;
 class Server {
 private:
     BucketHeap oram;    
-    int L;              
-    int Z;              
+    int L;
+    int Z;
 public:
     Server(int num_blocks, int bucket_size, BucketHeap initialized_tree);
     vector<Bucket> give_path(int leaf);
