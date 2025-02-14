@@ -28,32 +28,40 @@ BucketHeap::BucketHeap(int numBuckets, int bucketCapacity, const vector<unsigned
     }
 }
 
+// Returns the index of the parent node of the given index in a binary heap.
 int BucketHeap::parent(int i) { 
-    return (i - 1) / 2; 
+    return (i - 1) / 2;  // Integer division finds the parent index.
 }
 
+// Returns the index of the left child of the given index in a binary heap.
 int BucketHeap::leftChild(int i) { 
-    return 2 * i + 1; 
+    return 2 * i + 1;  // Left child index formula in a heap.
 }
 
+// Returns the index of the right child of the given index in a binary heap.
 int BucketHeap::rightChild(int i) { 
-    return 2 * i + 2; 
+    return 2 * i + 2;  // Right child index formula in a heap.
 }
 
+// Adds a new Bucket to the heap.
 void BucketHeap::addBucket(const Bucket& bucket) {
-    heap.push_back(bucket);
+    heap.push_back(bucket);  // Push the new bucket onto the heap vector.
 }
 
+// Removes and returns the last Bucket from the heap.
 Bucket BucketHeap::removeBucket() {
-    Bucket last = heap.back();
-    heap.pop_back();
-    return last;
+    Bucket last = heap.back();  // Store the last bucket in a temporary variable.
+    heap.pop_back();            // Remove the last bucket from the heap.
+    return last;                // Return the removed bucket.
+
 }
 
+// Retrieves a reference to the Bucket at a specific index in the heap.
 Bucket& BucketHeap::getBucket(int index) {
-    if (index >= 0 && index < heap.size())
-        return heap[index];
-    throw out_of_range("Index out of range");
+    if (index >= 0 && index < heap.size()) {
+        return heap[index];  // Return the bucket at the given index.
+    }
+    throw out_of_range("Index out of range");  // Throw an exception if index is invalid.
 }
 
 void BucketHeap::updateBucket(int index, const Bucket& bucket) {
@@ -63,11 +71,12 @@ void BucketHeap::updateBucket(int index, const Bucket& bucket) {
         throw out_of_range("Index out of range");
 }
 
+// Adds a Block to a specific Bucket in the heap.
 bool BucketHeap::addBlockToBucket(int bucketIndex, const block& b) {
     if (bucketIndex >= 0 && bucketIndex < heap.size()) {
-        return heap[bucketIndex].addBlock(b);
+        return heap[bucketIndex].addBlock(b);  // Call addBlock() on the targeted bucket.
     }
-    return false;
+    return false;  // Return false if the index is out of bounds.
 }
 
 void BucketHeap::printHeap() {
@@ -89,24 +98,27 @@ void BucketHeap::printHeap() {
     }
 }
 
+// Returns the number of Buckets in the heap.
 size_t BucketHeap::size() const {
-    return heap.size();
+    return heap.size();  // Return the size of the heap vector.
 }
 
+// Checks if the heap is empty.
 bool BucketHeap::empty() const {
-    return heap.empty();
+    return heap.empty();  // Return true if the heap is empty, otherwise false.
 }
 
+// Returns a vector containing the path from a leaf bucket to the root.
 vector<block> BucketHeap::getPathFromLeaf(int leafIndex) {
-    vector<block> path;
-    int current = leafIndex;
+    vector<block> path;  // Vector to store blocks along the path.
+    int current = leafIndex;  // Start at the given leaf index.
     while (true) {
         vector<block> blocks = heap[current].getBlocks();
         path.insert(path.end(), blocks.begin(), blocks.end());
         if (current == 0) break;  
         current = parent(current);
     }
-    reverse(path.begin(), path.end());
+    reverse(path.begin(), path.end());  // Reverse the path so it's ordered from root to leaf.
     return path;
 }
 
@@ -123,15 +135,17 @@ vector<Bucket> BucketHeap::getPathBuckets(int leafIndex) {
     return path;
 }
 
+// Returns a vector of indices representing the path from a leaf to the root.
 vector<int> BucketHeap::getPathIndices(int leaf){
     vector<int> path;
     
     int current = leaf;
     // Build path from leaf to root
     while (current >= 0) {
-        path.push_back(current);
-        if (current == 0) break;
-        current = parent(current);
+        path.push_back(current);  // Add the current index to the path.
+
+        if (current == 0) break;  // Stop when reaching the root.
+        current = parent(current);  // Move up to the parent.
     }
     
     return path;
