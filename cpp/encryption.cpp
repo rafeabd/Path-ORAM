@@ -68,6 +68,9 @@ vector<unsigned char> encryptData(const vector<unsigned char>& key, const vector
     
     // Generate a random #
     vector<unsigned char> iv(iv_length);
+    RAND_bytes(iv.data(), iv_length);
+    EVP_EncryptInit_ex(ctx, cipher, NULL, key.data(), iv.data());
+    /*
     if (RAND_bytes(iv.data(), iv_length) != 1) {
         EVP_CIPHER_CTX_free(ctx);
         throw std::runtime_error("Failed to generate random IV");
@@ -78,6 +81,7 @@ vector<unsigned char> encryptData(const vector<unsigned char>& key, const vector
         EVP_CIPHER_CTX_free(ctx);
         throw std::runtime_error("EVP_EncryptInit_ex failed");
     }
+    */
     
     // output buf, randomized #+cipher
     vector<unsigned char> ciphertext(iv); // Prepend IV.
@@ -87,16 +91,22 @@ vector<unsigned char> encryptData(const vector<unsigned char>& key, const vector
     int ciphertext_len = 0;
     
     // encrypt plaintext
+
+    /*
     if(1 != EVP_EncryptUpdate(ctx, ciphertext.data() + iv_length, &len, plaintext.data(), plaintext.size())) {
         EVP_CIPHER_CTX_free(ctx);
         throw std::runtime_error("EVP_EncryptUpdate failed");
     }
+    */
+    EVP_EncryptUpdate(ctx, ciphertext.data() + iv_length, &len, plaintext.data(), plaintext.size());
     ciphertext_len = len;
-    
+    EVP_EncryptFinal_ex(ctx, ciphertext.data() + iv_length + len, &len);
+    /*
     if(1 != EVP_EncryptFinal_ex(ctx, ciphertext.data() + iv_length + len, &len)) {
         EVP_CIPHER_CTX_free(ctx);
         throw std::runtime_error("EVP_EncryptFinal_ex failed");
     }
+    */
     ciphertext_len += len;
     
     EVP_CIPHER_CTX_free(ctx);

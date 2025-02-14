@@ -14,12 +14,14 @@ using namespace std;
 
 int main() {
     // initial parameters
-    int num_blocks = 10000; // actually lower bound for buckets, should fix
+    int num_buckets_low = 500000; // actually lower bound for buckets, should fix
+    cout << "num buckets" << num_buckets_low << endl;
     int bucket_capacity = 4;
-    int L = ceil(log2(num_blocks));
+    int L = ceil(log2(num_buckets_low));
     
     // num buckets in oram
     int num_buckets = (1 << (L + 1)) - 1;
+    cout << "num_bucket2: " << num_buckets << endl;
     cout << "Initializing oram with " << num_buckets << " buckets." << endl;
 
     // generate encryption key
@@ -28,9 +30,9 @@ int main() {
     // init oram
     BucketHeap oram_tree(num_buckets, bucket_capacity, encryptionKey);
     // init server
-    Server server(num_blocks, bucket_capacity, move(oram_tree));
+    Server server(num_buckets_low, bucket_capacity, move(oram_tree));
     // init client
-    Client client(num_blocks, &server, encryptionKey);
+    Client client(num_buckets_low, &server, encryptionKey);
 
     // Read dataset file and write blocks from it
     string datasetPath = "/Users/rabdulali/Desktop/Path-ORAM/tests/2^20.txt";
@@ -48,12 +50,14 @@ int main() {
     infile.close();
 
     // Example read accesses:
-    cout << "Trying to read blocks." << endl;
+    cout << "Read Blocks:" << endl;
     client.access(0, 0, "").print_block();
-    client.access(0, 999, "").print_block();
+    client.access(0, 9, "").print_block();
 
-    //cout << "Printing stash:" << endl;
-    //client.print_stash();
+    cout << "printing server view" << endl;
+    server.printHeap();
+    cout << "Printing stash:" << endl;
+    client.print_stash();
 
     return 0;
 }
