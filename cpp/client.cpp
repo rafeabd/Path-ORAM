@@ -81,16 +81,14 @@ void Client::writePath(int leaf, vector<Bucket>& path_buckets) {
         Bucket newBucket(4);
         for (int j = 0; j < 4; j++) {
             block dummyBlock(-1, -1, "dummy", true);
-            // encrypt dummies
-            dummyBlock = encryptBlock(dummyBlock, key);
             newBucket.addBlock(dummyBlock);
         }
         path_buckets[i] = newBucket;
     }
     
     // Place blocks from stash into the deepest bucket along the path where they fit
-    for (const auto &pair : stash) {
-        block b = pair.second;
+    for (auto it = stash.begin(); it != stash.end(); ) {
+        block b = it->second;
         int assigned_index = -1;
         for (int i = static_cast<int>(global_path.size()) - 1; i >= 0; i--) {
             if (b.leaf >= bucket_ranges[i].first && b.leaf <= bucket_ranges[i].second) {
@@ -100,6 +98,9 @@ void Client::writePath(int leaf, vector<Bucket>& path_buckets) {
         }
         if (assigned_index != -1 && path_buckets[assigned_index].hasSpace()) {
             path_buckets[assigned_index].addBlock(b);
+            it = stash.erase(it); // remove block from stash if placed
+        } else {
+            ++it;
         }
     }
     
@@ -134,14 +135,13 @@ block Client::access(int op, int id, const string& data) {
         }
     }
 
-    // init dummy and encrypt
-    block result = encryptBlock(block(-1, -1, "dummy", true), key);
+    block result = block(-1, -1, "dummy", true);
     
     auto it = stash.find(id);
     if (it != stash.end()) {
         // put new leaf
-        it->second.leaf = new_leaf;
         result = it->second;
+        it->second.leaf = new_leaf;
         if (op == 1) { // for writing
             it->second.data = data;
             it->second.dummy = false;
