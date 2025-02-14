@@ -5,6 +5,7 @@
 #include "bucket.h"
 #include "bst.h"
 #include "server.h"
+#include "encryption.h"
 #include <map>
 #include <memory>
 #include <random>
@@ -15,8 +16,7 @@ using namespace std;
 
 class Client {
 private:
-    vector<unsigned char> key_for_id;
-    vector<unsigned char> key_for_data;
+    vector<unsigned char> key;
     unordered_map<int, block> stash;
     map<int, int> position_map;
     int L;
@@ -29,10 +29,10 @@ private:
 public:
     vector<int> getPath(int leaf);
     int getRandomLeaf();
-    Client(int num_blocks, Server* server_ptr);
+    Client(int num_blocks, Server* server_ptr, const vector<unsigned char>& encryptionKey);
     block access(int op, int id, const string& data = "");
     vector<block> range_query(int start, int end);
     void print_stash();
 };
 
-#endif 
+#endif

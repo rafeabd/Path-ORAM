@@ -16,13 +16,14 @@ Server::Server(int num_blocks, int bucket_size, BucketHeap initialized_tree)
 
 vector<Bucket> Server::give_path(int leaf) {
     int bucket_index = leaf + ((1 << L) - 1);
-    vector<Bucket> path = oram.getPathBuckets(bucket_index);
     
+    // Get the indices first
     vector<int> pathIndices = oram.getPathIndices(bucket_index);
+    vector<Bucket> path = oram.getPathBuckets(bucket_index);
+
     for (int idx : pathIndices) {
         oram.clear_bucket(idx);  
     }
-    
     return path;
 }
 
