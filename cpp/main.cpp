@@ -14,7 +14,7 @@ using namespace std;
 
 int main() {
     // initial parameters
-    int num_buckets_low = 500000; // actually lower bound for buckets, should fix
+    int num_buckets_low = 1000; // lower bound for buckets - fixed
     cout << "num buckets" << num_buckets_low << endl;
     int bucket_capacity = 4;
     int L = ceil(log2(num_buckets_low));
@@ -54,10 +54,18 @@ int main() {
     client.access(0, 0, "").print_block();
     client.access(0, 9, "").print_block();
 
+    /*
+    cout << "range query" << endl;
+    vector<block> range_result = client.range_query(684,1988);
+    for (block &b : range_result) {
+        b.print_block();
+    }
+    */
+
     cout << "printing server view" << endl;
-    server.printHeap();
+    //server.printHeap();
     cout << "Printing stash:" << endl;
-    client.print_stash();
+    //client.print_stash();
 
     return 0;
 }

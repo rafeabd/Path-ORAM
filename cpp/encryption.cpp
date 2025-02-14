@@ -191,10 +191,10 @@ block encryptBlock(const block &b, const vector<unsigned char>& key) {
     // all block data to string
     string plaintext = serializeBlock(b);
     vector<unsigned char> plainVec(plaintext.begin(), plaintext.end());
-    //cout << "Plaintext vector size: " << plainVec.size() << endl;
+    //cout << "Plaintext  size: " << plainVec.size() << endl;
     // actual encryption
     vector<unsigned char> cipherVec = encryptData(key, plainVec);
-    //cout << "Ciphertext vector size: " << cipherVec.size() << endl;
+    //cout << "Ciphertext size: " << cipherVec.size() << endl;
     // binary to hex conversion
     string cipherHex = hexEncode(cipherVec);
     //cout << "Encrypting block: " << plaintext << " -> " << cipherHex << endl;
@@ -204,10 +204,10 @@ block encryptBlock(const block &b, const vector<unsigned char>& key) {
 // decrypt whole block
 block decryptBlock(const block &b, const vector<unsigned char>& key) {
     vector<unsigned char> cipherVec = hexDecode(b.data);
-    //cout << "Ciphertext vector size: " << cipherVec.size() << endl;
+    //cout << "Ciphertext size: " << cipherVec.size() << endl;
     //cout << "Decrypting block: " << b.data << " -> " << cipherVec.size() << " bytes" << endl;
     vector<unsigned char> plainVec = decryptData(key, cipherVec);
-    //cout << "Plaintext vector size: " << plainVec.size() << endl;
+    //cout << "Plaintext size: " << plainVec.size() << endl;
     string plainText(plainVec.begin(), plainVec.end());
     //cout << "Decrypted block: " << b.data << " -> " << plainText << endl;
     return deserializeBlock(plainText);

@@ -166,3 +166,15 @@ void Client::print_stash() {
         pair.second.print_block();
     }
 }
+
+vector<block> Client::range_query(int start, int end) {
+    vector<block> results;
+    while (start <= end) {
+        block b = access(0, start, "");
+        if (!b.dummy) {
+            results.push_back(b);
+        }
+        start++;
+    }
+    return results;
+}
