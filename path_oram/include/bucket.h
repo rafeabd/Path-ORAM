@@ -86,6 +86,7 @@ public:
      * @brief Prints bucket contents for debugging
      */
     void print_bucket();
+    bool startaddblock(block& newBlock);
 
     // TODO for rORAM - Additional methods:
     // void promoteHotBlocks();    // Move frequently accessed blocks to hot storage
