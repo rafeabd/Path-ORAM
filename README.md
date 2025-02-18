@@ -196,3 +196,9 @@ Manages:
    git push origin feature/new-feature
    ```
 5. Create Pull Request
+
+### Acknowledgments
+
+Path ORAM paper authors
+Contributors and reviewers
+OpenSSL team
