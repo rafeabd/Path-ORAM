@@ -1,3 +1,17 @@
+/**
+ * @file client.cpp
+ * @brief Implements client-side Path ORAM operations
+ * 
+ * This file contains the implementation of client-side Path ORAM operations,
+ * including block access, position map management, and stash handling.
+ * 
+ * For rORAM extension, key areas to enhance include:
+ * 1. Write buffer management
+ * 2. Background operations
+ * 3. Access pattern optimization
+ * 4. Hierarchical storage management
+ */
+
 #include "../include/client.h"
 #include "../include/bst.h"
 #include "../include/encryption.h"
@@ -14,6 +28,14 @@
 
 using namespace std;
 
+/**
+ * @brief Initializes client with given parameters
+ * 
+ * For rORAM:
+ * - Initialize hierarchical storage
+ * - Setup write buffer
+ * - Start background processes
+ */
 Client::Client(int num_blocks, Server* server_ptr, const vector<unsigned char>& encryptionKey) 
     : L(ceil(log2(num_blocks))), server(server_ptr), key(encryptionKey) {
     
@@ -30,6 +52,13 @@ bool Client::isOnPath(int blockLeaf, int bucketIndex) {
     return find(blockPath.begin(), blockPath.end(), bucketIndex) != blockPath.end();
 }
 
+/**
+ * @brief Generates random leaf position
+ * 
+ * For rORAM:
+ * - Consider access pattern-based placement
+ * - Implement level-aware randomization
+ */
 int Client::getRandomLeaf() {
     unsigned char buf[4];
     if (RAND_bytes(buf, sizeof(buf)) != 1) {
@@ -40,7 +69,13 @@ int Client::getRandomLeaf() {
     return random_value % (1 << L);
 }
 
-// Compute path from block leaf (in leaf space) to the root - bucket indices).
+/**
+ * @brief Computes path from leaf to root
+ * 
+ * For rORAM:
+ * - Add level-aware path computation
+ * - Support partial paths
+ */
 vector<int> Client::getPath(int leaf) {
     vector<int> path;
     int node = leaf + ((1 << L) - 1);  // leaf space to bucket index.
@@ -52,7 +87,14 @@ vector<int> Client::getPath(int leaf) {
     return path;
 }
 
-// Reads a path from the server. The server converts leaf space to bucket space
+/**
+ * @brief Reads path from server
+ * 
+ * For rORAM:
+ * - Implement hierarchical path reading
+ * - Add prefetching
+ * - Track access patterns
+ */
 vector<Bucket> Client::readPath(int leaf) {
     vector<Bucket> path_buckets = server->give_path(leaf);
     for (Bucket &bucket : path_buckets) {
@@ -64,6 +106,14 @@ vector<Bucket> Client::readPath(int leaf) {
     return path_buckets;
 }
 
+/**
+ * @brief Writes path back to server
+ * 
+ * For rORAM:
+ * - Add write buffering
+ * - Support background writes
+ * - Implement partial updates
+ */
 void Client::writePath(int leaf, vector<Bucket>& path_buckets) {
     // get bucket path and ranges for the leafs they can fit to
     vector<int> global_path = getPath(leaf);
@@ -119,7 +169,14 @@ void Client::writePath(int leaf, vector<Bucket>& path_buckets) {
     }
 }
 
-// op = 1 for write, op = 0 for read.
+/**
+ * @brief Performs block access operation
+ * 
+ * For rORAM:
+ * - Add access pattern optimization
+ * - Implement write buffering
+ * - Support batch operations
+ */
 block Client::access(int op, int id, const string& data) {
     // get current leaf and then assign a new random leaf
     int leaf = (position_map.count(id)) ? position_map[id] : getRandomLeaf();
@@ -160,13 +217,23 @@ block Client::access(int op, int id, const string& data) {
     return result;
 }
 
-//print stash
+/**
+ * @brief Prints stash contents for debugging
+ */
 void Client::print_stash() {
     for (auto &pair : stash) {
         pair.second.print_block();
     }
 }
 
+/**
+ * @brief Performs range query operation
+ * 
+ * For rORAM:
+ * - Optimize for range queries
+ * - Add prefetching
+ * - Implement batch access
+ */
 vector<block> Client::range_query(int start, int end) {
     vector<block> results;
     while (start <= end) {
@@ -178,3 +245,24 @@ vector<block> Client::range_query(int start, int end) {
     }
     return results;
 }
+
+/* TODO for rORAM - Additional methods to consider:
+ *
+ * void processWriteBuffer() {
+ *     // Process pending writes in background
+ *     // Merge related operations
+ *     // Optimize write patterns
+ * }
+ *
+ * void optimizeBlockPlacement() {
+ *     // Analyze access patterns
+ *     // Reorganize blocks based on frequency
+ *     // Update position map accordingly
+ * }
+ *
+ * void performBackgroundEviction() {
+ *     // Implement continuous eviction
+ *     // Balance storage levels
+ *     // Maintain optimal distribution
+ * }
+ */
