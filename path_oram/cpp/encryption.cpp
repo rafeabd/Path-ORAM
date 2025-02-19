@@ -1,3 +1,18 @@
+/**
+ * @file encryption.cpp
+ * @brief Implements encryption functionality for Path ORAM
+ * 
+ * This file provides the implementation of encryption operations,
+ * including block encryption/decryption, key generation, and data
+ * serialization.
+ * 
+ * For rORAM extension:
+ * 1. Optimize encryption for different storage levels
+ * 2. Add compression support
+ * 3. Implement hierarchical encryption
+ * 4. Add key rotation mechanisms
+ */
+
 #include <iostream>
 #include <openssl/hmac.h>
 #include <openssl/evp.h>
@@ -14,7 +29,9 @@
 
 using namespace std;
 
-// Encodes a vector of unsigned char into a hexadecimal string.
+/**
+ * @brief Converts binary data to hex string
+ */
 string hexEncode(const vector<unsigned char>& data) {
     ostringstream oss;
     oss << hex << setfill('0');
@@ -24,7 +41,9 @@ string hexEncode(const vector<unsigned char>& data) {
     return oss.str();
 }
 
-// Decodes a hexadecimal string back into a vector of unsigned char.
+/**
+ * @brief Converts hex string to binary data
+ */
 vector<unsigned char> hexDecode(const string &hex) {
     vector<unsigned char> data;
     for (size_t i = 0; i < hex.length(); i += 2) {
@@ -35,7 +54,9 @@ vector<unsigned char> hexDecode(const string &hex) {
     return data;
 }
 
-//generates encrypted id - don't use
+/**
+ * @brief Creates encrypted ID (currently not used)
+ */
 vector<unsigned char> create_encrypted_id(const vector<unsigned char>& key, const vector<unsigned char>& data, size_t length) {
     vector<unsigned char> output(length);
     unsigned int len = length;
@@ -49,7 +70,13 @@ vector<unsigned char> create_encrypted_id(const vector<unsigned char>& key, cons
     return output;
 }
 
-//generates keys
+/**
+ * @brief Generates encryption key
+ * 
+ * For rORAM:
+ * - Add support for multiple keys
+ * - Implement key hierarchy
+ */
 vector<unsigned char> generateEncryptionKey(size_t length) {
     vector<unsigned char> key(length);
     if (!RAND_bytes(key.data(), length)) {
@@ -58,7 +85,13 @@ vector<unsigned char> generateEncryptionKey(size_t length) {
     return key;
 }
 
-// Randomized encryption
+/**
+ * @brief Encrypts data using AES-256-CBC
+ * 
+ * For rORAM:
+ * - Add compression before encryption
+ * - Implement level-specific encryption
+ */
 vector<unsigned char> encryptData(const vector<unsigned char>& key, const vector<unsigned char>& plaintext) {
     EVP_CIPHER_CTX* ctx = EVP_CIPHER_CTX_new();
     if (!ctx) throw std::runtime_error("Failed to create EVP_CIPHER_CTX");
@@ -70,18 +103,6 @@ vector<unsigned char> encryptData(const vector<unsigned char>& key, const vector
     vector<unsigned char> iv(iv_length);
     RAND_bytes(iv.data(), iv_length);
     EVP_EncryptInit_ex(ctx, cipher, NULL, key.data(), iv.data());
-    /*
-    if (RAND_bytes(iv.data(), iv_length) != 1) {
-        EVP_CIPHER_CTX_free(ctx);
-        throw std::runtime_error("Failed to generate random IV");
-    }
-    
-    // Initialize encryption with random #
-    if(1 != EVP_EncryptInit_ex(ctx, cipher, NULL, key.data(), iv.data())) {
-        EVP_CIPHER_CTX_free(ctx);
-        throw std::runtime_error("EVP_EncryptInit_ex failed");
-    }
-    */
     
     // output buf, randomized #+cipher
     vector<unsigned char> ciphertext(iv); // Prepend IV.
@@ -90,36 +111,20 @@ vector<unsigned char> encryptData(const vector<unsigned char>& key, const vector
     int len;
     int ciphertext_len = 0;
     
-    // encrypt plaintext
-
-    /*
-    if(1 != EVP_EncryptUpdate(ctx, ciphertext.data() + iv_length, &len, plaintext.data(), plaintext.size())) {
-        EVP_CIPHER_CTX_free(ctx);
-        throw std::runtime_error("EVP_EncryptUpdate failed");
-    }
-    */
     EVP_EncryptUpdate(ctx, ciphertext.data() + iv_length, &len, plaintext.data(), plaintext.size());
     ciphertext_len = len;
     EVP_EncryptFinal_ex(ctx, ciphertext.data() + iv_length + len, &len);
-    /*
-    if(1 != EVP_EncryptFinal_ex(ctx, ciphertext.data() + iv_length + len, &len)) {
-        EVP_CIPHER_CTX_free(ctx);
-        throw std::runtime_error("EVP_EncryptFinal_ex failed");
-    }
-    */
     ciphertext_len += len;
     
     EVP_CIPHER_CTX_free(ctx);
     
-    // resize the proper output length
     ciphertext.resize(iv_length + ciphertext_len);
-
-    //cout << "Encrypted data length: " << ciphertext.size() << endl;
-
     return ciphertext;
 }
 
-// decrypt using the random # from ciphertext
+/**
+ * @brief Decrypts data using AES-256-CBC
+ */
 vector<unsigned char> decryptData(const vector<unsigned char>& key, const vector<unsigned char>& ciphertext) {
     const EVP_CIPHER* cipher = EVP_aes_256_cbc();
     int iv_length = EVP_CIPHER_iv_length(cipher);
@@ -127,7 +132,6 @@ vector<unsigned char> decryptData(const vector<unsigned char>& key, const vector
         throw std::runtime_error("Ciphertext too short, missing IV");
     }
     
-    // get random #
     vector<unsigned char> iv(ciphertext.begin(), ciphertext.begin() + iv_length);
     
     EVP_CIPHER_CTX* ctx = EVP_CIPHER_CTX_new();
@@ -138,7 +142,6 @@ vector<unsigned char> decryptData(const vector<unsigned char>& key, const vector
         throw std::runtime_error("EVP_DecryptInit_ex failed");
     }
     
-    // buf for plaintext
     vector<unsigned char> plaintext(ciphertext.size() - iv_length); 
     int len;
     int plaintext_len = 0;
@@ -158,13 +161,17 @@ vector<unsigned char> decryptData(const vector<unsigned char>& key, const vector
     EVP_CIPHER_CTX_free(ctx);
     
     plaintext.resize(plaintext_len);
-
-    //cout << "Decrypted data length: " << plaintext.size() << endl;
-
     return plaintext;
 }
 
-// make it so all block info can be stored in just the data
+/**
+ * @brief Serializes block to string
+ * 
+ * For rORAM:
+ * - Add compression
+ * - Support variable block sizes
+ * - Include metadata
+ */
 string serializeBlock(const block &b) {
     ostringstream oss;
     oss << b.id << "|" << b.leaf << "|" << (b.dummy ? "1" : "0") << "|";
@@ -175,7 +182,9 @@ string serializeBlock(const block &b) {
     return oss.str();
 }
 
-// interpret all block info from the data after it has been serialized
+/**
+ * @brief Deserializes string to block
+ */
 block deserializeBlock(const string &s) {
     istringstream iss(s);
     string token;
@@ -194,29 +203,27 @@ block deserializeBlock(const string &s) {
     return block(id, leaf, data, dummy);
 }
 
-// encrypt the whole block
+/**
+ * @brief Encrypts entire block
+ * 
+ * For rORAM:
+ * - Add level-specific encryption
+ * - Implement compression
+ */
 block encryptBlock(const block &b, const vector<unsigned char>& key) {
-    // all block data to string
     string plaintext = serializeBlock(b);
     vector<unsigned char> plainVec(plaintext.begin(), plaintext.end());
-    //cout << "Plaintext  size: " << plainVec.size() << endl;
-    // actual encryption
     vector<unsigned char> cipherVec = encryptData(key, plainVec);
-    //cout << "Ciphertext size: " << cipherVec.size() << endl;
-    // binary to hex conversion
     string cipherHex = hexEncode(cipherVec);
-    //cout << "Encrypting block: " << plaintext << " -> " << cipherHex << endl;
     return block(0, 0, cipherHex, true);
 }
 
-// decrypt whole block
+/**
+ * @brief Decrypts entire block
+ */
 block decryptBlock(const block &b, const vector<unsigned char>& key) {
     vector<unsigned char> cipherVec = hexDecode(b.data);
-    //cout << "Ciphertext size: " << cipherVec.size() << endl;
-    //cout << "Decrypting block: " << b.data << " -> " << cipherVec.size() << " bytes" << endl;
     vector<unsigned char> plainVec = decryptData(key, cipherVec);
-    //cout << "Plaintext size: " << plainVec.size() << endl;
     string plainText(plainVec.begin(), plainVec.end());
-    //cout << "Decrypted block: " << b.data << " -> " << plainText << endl;
     return deserializeBlock(plainText);
 }
