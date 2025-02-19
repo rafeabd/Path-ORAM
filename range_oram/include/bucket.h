@@ -9,6 +9,8 @@ using namespace std;
 class Bucket {
 private:
     vector<block> blocks;
+    int height;
+    int bit_reversed_order;
     int Z;  
 
 public:

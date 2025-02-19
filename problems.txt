@@ -1,0 +1,6 @@
+for a, where a = 2^i (i = range such that 2^i<total blocks)
+for x such that x*a < total blocks
+	x is mapped to a random leaf node, following normal path oram;
+	Then, to access the range x to x+2^i, you read the leaf node paths
+	in bit reverse lexographic order from the leaf of x, and each one of
+	these paths will have a block in the range we want.

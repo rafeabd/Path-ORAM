@@ -14,7 +14,7 @@ using namespace std;
 
 int main() {
     // initial parameters
-    int num_buckets_low = 500; // lower bound for buckets - fixed
+    int num_buckets_low = 10; // lower bound for buckets - fixed
     cout << "num buckets" << num_buckets_low << endl;
     int bucket_capacity = 4;
     int L = ceil(log2(num_buckets_low));
@@ -35,7 +35,7 @@ int main() {
     Client client(num_buckets_low, &server, encryptionKey);
 
     // Read dataset file and write blocks from it
-    string datasetPath = "/Users/rabdulali/Desktop/Path-ORAM/tests/2^10.txt";
+    string datasetPath = "/Users/rabdulali/Desktop/Path-ORAM/tests/2^4.txt";
     ifstream infile(datasetPath);
     string line;
     while(getline(infile, line)) {
@@ -51,7 +51,7 @@ int main() {
 
     // Example read accesses:
     cout << "Reading Blocks:" << endl;
-    for (int i = 0; i < 1024; i++) {
+    for (int i = 0; i < 16; i++) {
         client.access(0, i, "");
     }
 
@@ -64,9 +64,9 @@ int main() {
     */
 
     cout << "printing server view" << endl;
-    //server.printHeap();
+    server.printHeap();
     cout << "Printing stash:" << endl;
-    //client.print_stash();
+    client.print_stash();
 
     return 0;
 }
