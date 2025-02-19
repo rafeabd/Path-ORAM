@@ -1,15 +1,16 @@
+/*
 #ifndef SERVER_H
 #define SERVER_H
 
 #include "bucket.h"
-#include "bst.h"
+#include "oram.h"
 #include <vector>
 
 using namespace std;
 
 class Server {
 private:
-    BucketHeap oram;    
+    vector<BucketHeap> oram;    
     int L;
     int Z;
 public:
@@ -20,3 +21,5 @@ public:
 };
 
 #endif 
+
+*/

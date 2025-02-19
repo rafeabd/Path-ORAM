@@ -13,6 +13,7 @@ block::block(int id, int leaf, const string& data, bool dummy) {
     this->leaf = leaf;
     this->data = data;
     this->dummy = dummy;
+    this->path = vector<int>();
 }
 
 void block :: print_block() {

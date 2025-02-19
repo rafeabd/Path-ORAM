@@ -1,9 +1,10 @@
+/*
 #ifndef CLIENT_H
 #define CLIENT_H
 
 #include "block.h"
 #include "bucket.h"
-#include "bst.h"
+#include "oram.h"
 #include "server.h"
 #include "encryption.h"
 #include <map>
@@ -33,6 +34,10 @@ public:
     block access(int op, int id, const string& data = "");
     vector<block> range_query(int start, int end);
     void print_stash();
+
+    vector<block> range_access(int op, int start, int end, vector<block> data);
 };
 
 #endif
+
+*/

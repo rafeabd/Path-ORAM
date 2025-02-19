@@ -1,6 +1,7 @@
+/*
 #include "../include/server.h"
 #include "../include/bucket.h"
-#include "../include/bst.h"
+#include "../include/oram.h"
 #include "../include/block.h"
 #include <vector>
 #include <iostream>
@@ -34,3 +35,4 @@ void Server::write_bucket(const Bucket& path, int bucket_index) {
 void Server::printHeap() {
     oram.printHeap();
 }
+*/

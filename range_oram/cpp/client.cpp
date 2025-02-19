@@ -1,5 +1,6 @@
+/*
 #include "../include/client.h"
-#include "../include/bst.h"
+#include "../include/oram.h"
 #include "../include/encryption.h"
 #include "../include/server.h" 
 #include <iostream>
@@ -160,6 +161,15 @@ block Client::access(int op, int id, const string& data) {
     return result;
 }
 
+vector<block> Client::range_access(int op, int start, int end, vector<block> data) {
+    // find correct oram to query
+    int distance = end - start;
+    int i = ceil(log2(distance));
+    int rangeSize = 1 << i;
+    int rangeStart = (start / rangeSize) * rangeSize;
+    cout << "range start: " << rangeStart << " range size: " << rangeSize << endl;
+}
+
 //print stash
 void Client::print_stash() {
     for (auto &pair : stash) {
@@ -178,3 +188,4 @@ vector<block> Client::range_query(int start, int end) {
     }
     return results;
 }
+*/
