@@ -16,7 +16,7 @@ struct block {
     vector<int> path;
 
     block(int id = -1, int leaf = -1, const string& data = "dummy", bool dummy = true);
-    void print_block();
+    void print_block(bool show_path = false);
 };
 
 #endif
