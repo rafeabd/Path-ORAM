@@ -18,12 +18,12 @@
 
 using namespace std;
 
-Client::Client(int num_blocks, int bucket_capacity, Server* server_ptr, int max_range){
+Client::Client(int num_buckets, int bucket_capacity, Server* server_ptr, int max_range){
     this->key = generateEncryptionKey(32);
-    this->L = ceil(log2(num_blocks));
+    this->L = ceil(log2(num_buckets));
     this->server = server_ptr;
     this->max_range = max_range;
-    this->num_blocks = num_blocks;
+    this->num_buckets = (1<<L)-1;
     this->bucket_capacity = bucket_capacity;
     
     int num_trees = ceil(log2(max_range)) + 1;
@@ -31,7 +31,7 @@ Client::Client(int num_blocks, int bucket_capacity, Server* server_ptr, int max_
     for (int i = 0; i < num_trees; i++) {
         // Initialize trees
         int tree_range = 1 << i;
-        ORAM* tree = new ORAM(num_blocks, bucket_capacity, key, tree_range);
+        ORAM* tree = new ORAM(this->num_buckets, bucket_capacity, key, tree_range);
         oram_trees.push_back(tree);
         
         // For global counters (separate for each tree)
@@ -47,6 +47,8 @@ Client::Client(int num_blocks, int bucket_capacity, Server* server_ptr, int max_
     }
 }
 
+// In client.cpp - read_range function
+
 tuple<vector<block>, int> Client::read_range(int range_power, int id) {
     cout << "read_range: range_power=" << range_power << ", id=" << id << endl;
     
@@ -54,21 +56,17 @@ tuple<vector<block>, int> Client::read_range(int range_power, int id) {
     int range_size = 1 << range_power;
     vector<int> range_U;
     for (int a = id; a < id + range_size; a++) {
-        if (a < num_blocks) {
-            range_U.push_back(a);
-        }
+        range_U.push_back(a);
     }
     
-    cout << "Range U contains " << range_U.size() << " blocks" << endl;
     
-    // Step 2: Scan stash_i for blocks in range U
+    // Step 2: result ← Scan stash_i for blocks in range U
     vector<block> result;
     unordered_map<int, block>& stash = stashes[range_power];
     
-    cout << "Checking stash for blocks in range (stash size: " << stash.size() << ")" << endl;
     for (const auto& [block_id, blk] : stash) {
-        if (find(range_U.begin(), range_U.end(), block_id) != range_U.end()) {
-            cout << "Found block " << block_id << " in stash with data '" << blk.data << "'" << endl;
+        // Check if block's ID is in range U
+        if (find(range_U.begin(), range_U.end(), blk.id) != range_U.end()) {
             result.push_back(blk);
         }
     }
@@ -76,34 +74,14 @@ tuple<vector<block>, int> Client::read_range(int range_power, int id) {
     // Step 3: p ← PM_i.query(a) // Get the leaf label p for address a
     map<int, int>& pm = position_maps[range_power];
     int p;
+    int p_prime = getRandomLeaf() % (1 << range_power);
     if (pm.find(id) != pm.end()) {
         p = pm[id];
-        cout << "Found position for block " << id << ": " << p << endl;
     } else {
-        // If not in position map, assign a random leaf
-        p = getRandomLeaf() % (1 << range_power);
-        pm[id] = p;
-        cout << "Assigned new position for block " << id << ": " << p << endl;
+        return make_tuple(result,p_prime);
     }
     
-    // Step 4: p' ← [0, N) // random leaf label p'
-    int p_prime = getRandomLeaf() % (1 << range_power);
-    
-    // Step 5: PM_i.update(a, p') // Update the position map for address a
     pm[id] = p_prime;
-    cout << "Updated position for block " << id << " to " << p_prime << endl;
-    
-    // Steps 6-9: Read the ORAM buckets and collect valid blocks
-    ORAM* tree = oram_trees[range_power];
-    int h = ceil(log2(tree->num_buckets)); // Height of the tree
-    
-    cout << "Reading from ORAM tree, height: " << h << endl;
-    vector<int> path_indices = tree->getpathindicies_rtol(p);
-    cout << "Path indices from root to leaf: ";
-    for (int idx : path_indices) {
-        cout << idx << " ";
-    }
-    cout << endl;
     
     // Create a map to track blocks we've already found by ID
     unordered_map<int, bool> found_blocks;
@@ -111,20 +89,36 @@ tuple<vector<block>, int> Client::read_range(int range_power, int id) {
         found_blocks[b.id] = true;
     }
     
-    for (int j = 0; j < h && j < path_indices.size(); j++) {
-        // Step 7: Read buckets at level j
-        int physical_index = path_indices[j];
-        vector<Bucket> level_buckets = tree->read_level_range(j, physical_index, range_size);
+    // Steps 6-9: Read buckets according to the pseudocode formula
+    ORAM* tree = oram_trees[range_power];
+    int h = ceil(log2(tree->num_buckets+1)); // Height of the tree
+    
+    
+    for (int j = 0; j < h; j++) {
+        // Step 7: Read buckets v_j^t mod 2^j for t in [p, p+2^j]
+        set<int> processed_indices; // To avoid duplicates
+        vector<Bucket> level_buckets;
         
-        cout << "Level " << j << ": Reading " << level_buckets.size() << " buckets" << endl;
+        int level_size = 1 << j;
         
-        // Step 8-9: For each valid block, check if in range U and not already in result
+        for (int t = p; t <= p + (1 << j); t++) {
+            int bucket_idx = t % level_size;
+            
+            // Skip if already processed
+            if (processed_indices.find(bucket_idx) != processed_indices.end()) {
+                continue;
+            }
+            
+            processed_indices.insert(bucket_idx);
+            Bucket bucket = tree->get_bucket_at_level(j, bucket_idx);
+            level_buckets.push_back(bucket);
+            
+        }
+        
+        // Steps 8-9: For valid blocks in range U, add to result if not already found
         for (Bucket& bucket : level_buckets) {
             for (block& blk : bucket.getBlocks()) {
-                if (!blk.dummy) {
-                    cout << "  Found non-dummy block " << blk.id << " with data '" 
-                         << blk.data << "'" << endl;
-                    
+                if (!blk.dummy) {   
                     // Check if block ID is in range U
                     bool in_range_U = find(range_U.begin(), range_U.end(), blk.id) != range_U.end();
                     
@@ -132,7 +126,6 @@ tuple<vector<block>, int> Client::read_range(int range_power, int id) {
                     bool already_found = found_blocks.find(blk.id) != found_blocks.end();
                     
                     if (in_range_U && !already_found) {
-                        cout << "  Adding block " << blk.id << " to result" << endl;
                         result.push_back(blk);
                         found_blocks[blk.id] = true;
                     }
@@ -140,25 +133,6 @@ tuple<vector<block>, int> Client::read_range(int range_power, int id) {
             }
         }
     }
-    
-    // Ensure the blocks we found have properly sized paths vectors
-    for (block& blk : result) {
-        // Resize paths vector if needed
-        if (blk.paths.size() < oram_trees.size()) {
-            blk.paths.resize(oram_trees.size(), -1);
-        }
-        
-        // Make sure the path for this ORAM is set
-        blk.paths[range_power] = blk.leaf;
-        
-        // For blocks in the range, update to the new position
-        if (blk.id >= id && blk.id < id + range_size) {
-            int offset = blk.id - id;
-            blk.paths[range_power] = (p_prime + offset) % (1 << range_power);
-            blk.leaf = blk.paths[range_power]; // Update leaf as well
-        }
-    }
-    
     cout << "read_range returning " << result.size() << " blocks" << endl;
     
     // Step 10: return (result, p')
@@ -174,42 +148,35 @@ void Client::batch_evict(int eviction_number, int range_power) {
     
     ORAM* tree = oram_trees[range_power];
     int k = eviction_number; 
-    int &cnt = evict_counter[range_power];
+    int &cnt = evict_counter[range_power];  // Counter for this specific ORAM tree
     unordered_map<int, block> &stash = stashes[range_power];
-    
-    cout << "Batch evict: range " << range_power << ", eviction count " << k << endl;
-    cout << "Stash has " << stash.size() << " blocks before eviction" << endl;
+
 
     // h = log N: the height of the ORAM tree
-    int h = ceil(log2(tree->num_buckets));
+    int h = L;
     
-    // Step 1-5: Read buckets from tree into stash
+    // Step 1-5: Fetch buckets from server and add valid blocks to stash
     for (int j = 0; j < h; j++) {
-        // Compute the set of bucket indices at level j to read
-        set<int> bucket_indices;
+        int level_size = 1 << j;
+        set<int> processed_indices; // To avoid duplicate bucket reads
+        
+        // Step 2: Read ORAM buckets V_j = {v_j^t mod 2^j : t ∈ [cnt, cnt + k)}
         for (int t = cnt; t < cnt + k; t++) {
-            bucket_indices.insert(t % (1 << j));
-        }
-        
-        cout << "Level " << j << ": Reading " << bucket_indices.size() << " buckets" << endl;
-        
-        // Read each bucket and add valid blocks to stash
-        for (int bucket_idx : bucket_indices) {
-            // Compute the physical index of the bucket
-            int levelStart = (1 << j) - 1;
-            int physicalIndex = levelStart + bucket_idx;
+            int bucket_idx = t % level_size;
             
-            // Only process if within tree bounds
-            if (physicalIndex < tree->num_buckets) {
-                Bucket bucket = tree->get_bucket_at_level(j, bucket_idx);
-                
-                // For each valid block in the bucket
-                for (const block& blk : bucket.getBlocks()) {
-                    if (!blk.dummy) {
-                        cout << "  Found non-dummy block " << blk.id << " with data '" 
-                             << blk.data << "'" << endl;
-                        
-                        // Add to stash, replacing any older version with same ID
+            // Skip if already processed
+            if (processed_indices.find(bucket_idx) != processed_indices.end()) {
+                continue;
+            }
+            processed_indices.insert(bucket_idx);
+            
+            Bucket bucket = tree->get_bucket_at_level(j, bucket_idx);
+            
+            // Step 3-5: Process blocks in bucket
+            for (const block& blk : bucket.getBlocks()) {
+                if (!blk.dummy) {
+                    // Step 4-5: Add to stash if no block with same address exists
+                    if (stash.find(blk.id) == stash.end()) {
                         stash[blk.id] = blk;
                     }
                 }
@@ -217,149 +184,90 @@ void Client::batch_evict(int eviction_number, int range_power) {
         }
     }
     
-    cout << "Stash has " << stash.size() << " blocks after reading buckets" << endl;
+    // Store blocks for each bucket to write
+    map<pair<int, int>, vector<block>> bucket_blocks;
     
-    // Step 6-11: Evict paths and write buckets back
-    map<pair<int, int>, Bucket> modified_buckets;
-    
-    // First, organize blocks by path and level to ensure deterministic placement
-    map<pair<int, int>, vector<block>> blocks_by_path_level;
-    
-    for (int j = h - 1; j >= 0; j--) {
-        // Compute the set of path indices at level j to evict
-        set<int> path_indices;
+    // Step 6: Process from bottom-up, level-by-level
+    for (int j = h - 1; j >= 0; j--) {  // Start at h-1 as 0-indexed
+        int level_size = (1 << j);
+        set<int> processed_paths; // Track processed paths
+        
+        // Step 7: For each r ∈ {t mod 2^j : t ∈ [cnt, k+cnt)}
         for (int t = cnt; t < cnt + k; t++) {
-            path_indices.insert(t % (1 << j));
-        }
-        
-        cout << "Level " << j << ": Evicting to " << path_indices.size() << " buckets" << endl;
-        
-        // For each path index at this level
-        for (int r : path_indices) {
-            // Collect blocks that should go to this path at this level
-            vector<block> path_blocks;
+            int r = t % level_size;
             
-            // Process the stash
+            // Skip if already processed
+            if (processed_paths.find(r) != processed_paths.end()) {
+                continue;
+            }
+            processed_paths.insert(r);
+            
+            
+            // Step 8: S' ← {(d,a,p0,...,pℓ) ∈ stash_i : p_i ≡ r (mod 2^j)}
+            vector<block> selected_blocks;
             auto it = stash.begin();
             while (it != stash.end()) {
-                int block_id = it->first;
                 block& blk = it->second;
                 
-                // Ensure the paths vector has enough elements
-                if (blk.paths.size() <= range_power) {
-                    blk.paths.resize(range_power + 1, -1);
-                }
+
                 
-                // If path not set for this ORAM, assign a random path
-                if (blk.paths[range_power] == -1) {
-                    blk.paths[range_power] = getRandomLeaf() % (1 << range_power);
-                    blk.leaf = blk.paths[range_power]; // Update leaf as well
-                }
-                
-                // Get path label for this level
-                int path_label = blk.paths[range_power] % (1 << j);
-                
-                if (path_label == r) {
-                    cout << "  Evicting block " << block_id << " with data '" 
-                         << blk.data << "' to level " << j << ", bucket " << r << endl;
-                    
-                    // Add to path blocks
-                    path_blocks.push_back(blk);
-                    it = stash.erase(it);
+                // Check if block belongs to this path at this level
+                if (blk.paths[range_power] % (1 << j) == r) {
+                    selected_blocks.push_back(blk);
+                    it = stash.erase(it); // Remove from stash (Step 10)
                 } else {
                     ++it;
                 }
             }
             
-            // Store path blocks
-            if (!path_blocks.empty()) {
-                blocks_by_path_level[{j, r}] = path_blocks;
+            // Step 9: S' ← Select min(|S'|, Z) blocks from S'
+            if (selected_blocks.size() > bucket_capacity) {   
+                // Keep only up to Z blocks
+                selected_blocks.resize(bucket_capacity);
             }
+            
+            // Store blocks for this bucket (Step 11: v_j^r mod 2^j ← S')
+            bucket_blocks[{j, r}] = selected_blocks;
         }
     }
     
-    // Create buckets from the collected blocks
-    for (const auto& [path_level, blocks] : blocks_by_path_level) {
-        int j = path_level.first;  // level
-        int r = path_level.second; // index in level
+    // Steps 12-13: Write back buckets to server
+    for (int j = 0; j < h; j++) {
+        int level_size = (1 << j);
+        set<int> processed_indices; // Track processed buckets
         
-        // Sort blocks by ID to ensure deterministic selection
-        vector<block> sorted_blocks = blocks;
-        sort(sorted_blocks.begin(), sorted_blocks.end(), 
-             [](const block& a, const block& b) { return a.id < b.id; });
-        
-        // Select up to Z blocks for this bucket (avoid duplicates)
-        vector<block> selected_blocks;
-        unordered_set<int> selected_ids;
-        
-        for (const block& blk : sorted_blocks) {
-            if (selected_ids.find(blk.id) == selected_ids.end()) {
-                selected_blocks.push_back(blk);
-                selected_ids.insert(blk.id);
-                
-                if (selected_blocks.size() >= static_cast<size_t>(bucket_capacity)) {
-                    break;
+        // Step 13: Write the ORAM buckets {v_j^t mod 2^j : t ∈ [cnt, cnt + k)}
+        for (int t = cnt; t < cnt + k; t++) {
+            int r = t % level_size;
+            
+            // Skip if already processed
+            if (processed_indices.find(r) != processed_indices.end()) {
+                continue;
+            }
+            processed_indices.insert(r);
+            
+            // Create a new bucket
+            Bucket new_bucket(bucket_capacity);
+            
+            // Add blocks assigned to this bucket
+            if (bucket_blocks.find({j, r}) != bucket_blocks.end()) {
+                for (const block& blk : bucket_blocks[{j, r}]) {
+                    bool added = new_bucket.addBlock(blk);
                 }
             }
-        }
-        
-        // Create a new bucket with these blocks
-        Bucket newBucket(bucket_capacity);
-        for (const block& b : selected_blocks) {
-            bool added = newBucket.addBlock(b);
-            if (!added) {
-                cerr << "Error: Could not add block to bucket" << endl;
-            } else {
-                cout << "  Added block " << b.id << " to bucket" << endl;
-            }
-        }
-        
-        // Store for later writing
-        modified_buckets[{j, r}] = newBucket;
-    }
-    
-    // Create empty buckets for paths that don't have blocks
-    for (int j = h - 1; j >= 0; j--) {
-        set<int> path_indices;
-        for (int t = cnt; t < cnt + k; t++) {
-            path_indices.insert(t % (1 << j));
-        }
-        
-        for (int r : path_indices) {
-            if (modified_buckets.find({j, r}) == modified_buckets.end()) {
-                // Create an empty bucket
-                Bucket emptyBucket(bucket_capacity);
-                modified_buckets[{j, r}] = emptyBucket;
-            }
+            
+            // Write the bucket back to the ORAM
+            int levelStart = (1 << j) - 1;
+            int physicalIndex = levelStart + r;
+            int logicalIndex = tree->toNormalIndex(physicalIndex);
+            tree->updateBucket(logicalIndex, new_bucket);
+
         }
     }
-    
-    cout << "Evicted " << modified_buckets.size() << " buckets from stash" << endl;
-    cout << "Stash has " << stash.size() << " blocks after eviction" << endl;
-    
-    // Step 12-13: Write back buckets to the ORAM
-    for (const auto& [bucket_pos, bucket] : modified_buckets) {
-        int j = bucket_pos.first;  // level
-        int r = bucket_pos.second; // index in level
-        
-        int levelStart = (1 << j) - 1;
-        int physicalIndex = levelStart + r;
-        
-        // Convert to normal index and update
-        int logicalIndex = tree->toNormalIndex(physicalIndex);
-        tree->updateBucket(logicalIndex, bucket);
-        
-        cout << "  Updated bucket at level " << j << ", index " << r 
-             << " (logical index " << logicalIndex << ")" << endl;
-    }
-    
-    // Update the counter
-    cnt = (cnt + k) % (1 << h);
-    cout << "Updated eviction counter to " << cnt << endl;
 }
 
 string Client::access(int id, int range, int op, string data) {
-    // Find the appropriate tree index i such that 2^i >= range
+    // Step 1: Let i ∈ [0, ℓ) such that 2^(i-1) < r ≤ 2^i
     int i = 0;
     while ((1 << i) < range) {
         i++;
@@ -367,168 +275,172 @@ string Client::access(int id, int range, int op, string data) {
     
     // Ensure i is within valid range
     if (i >= oram_trees.size()) {
-        cerr << "Range too large: " << range << endl;
-        return "";
+        return "initial range is too big";
     }
     
+    // Step 2: Let a0 = ⌊a/2^i⌋ · 2^i
+    int a0 = (id / (1 << i)) * (1 << i);
+    
+    cout << "Access: id=" << id << ", range=" << range 
+         << ", op=" << (op == 0 ? "read" : "write") << endl;
+    cout << "Calculated i=" << i << ", a0=" << a0 << endl;
+    
+    // Step 3: D ← {} (Initialize empty result set)
+    vector<string> D(range);
     string result = "";
     
-    // Compute a1 and a2 
-    int a1 = (id / (1 << i)) * (1 << i);  
-    int a2 = (a1 + (1 << i)) % num_blocks;
-    
-    cout << "Access: id=" << id << ", range=" << range << ", op=" << op << endl;
-    cout << "Calculated a1=" << a1 << ", a2=" << a2 << endl;
-    
-    // The position maps for the range ORAMs (Ri) only store the start position
-    // of the range, as subsequent positions are calculated using bit-reversed order
-    map<int, int>& posMap = position_maps[i];
-    
-    // Get p1 (path for a1 in Ri) - this is our only position map lookup
-    int p1;
-    if (posMap.find(a1) != posMap.end()) {
-        p1 = posMap[a1];
-        cout << "Found position for a1=" << a1 << " in R" << i << ": " << p1 << endl;
-    } else {
-        p1 = getRandomLeaf() % (1 << i);
-        posMap[a1] = p1;
-        cout << "Assigned new position for a1=" << a1 << " in R" << i << ": " << p1 << endl;
-    }
-    
-    // Same for a2 (if needed)
-    int p2;
-    if (posMap.find(a2) != posMap.end()) {
-        p2 = posMap[a2];
-        cout << "Found position for a2=" << a2 << " in R" << i << ": " << p2 << endl;
-    } else {
-        p2 = getRandomLeaf() % (1 << i);
-        posMap[a2] = p2;
-        cout << "Assigned new position for a2=" << a2 << " in R" << i << ": " << p2 << endl;
-    }
-    
-    
     // Execute two ReadRange operations to get blocks
-    auto [blocks1, p_prime1] = read_range(i, a1);
-    auto [blocks2, p_prime2] = read_range(i, a2);
-    
-    // Combine results from both ReadRange operations
     vector<block> combined_blocks;
-    combined_blocks.insert(combined_blocks.end(), blocks1.begin(), blocks1.end());
-    combined_blocks.insert(combined_blocks.end(), blocks2.begin(), blocks2.end());
+    map<int, int> positions; // Track positions for each range
     
-    cout << "Combined " << blocks1.size() << " + " << blocks2.size() 
-         << " = " << combined_blocks.size() << " blocks" << endl;
+    // Steps 4-7: Perform two ReadRanges to cover the range [a, a+r)
+    for (int a_prime : {a0, a0 + (1 << i)}) {
+        
+        // Step 5: (Ba', ..., Ba'+2^i-1, p') ← Ri.ReadRange(a')
+        auto [blocks, p_prime] = read_range(i, a_prime);
+        
+        // Store position in our tracking map
+        positions[a_prime] = p_prime;
+        
+        // Steps 6-7: Update positions for all blocks in the range
+        for (block& blk : blocks) {
+            
+            // If block is in the current range segment [a', a'+2^i)
+            if (blk.id >= a_prime && blk.id < a_prime + (1 << i)) {
+                int offset = blk.id - a_prime;
+                // Ba'+j.pi ← p' + j
+                blk.paths[i] = (p_prime + offset) % (1 << i);
+                blk.leaf = blk.paths[i]; // Update leaf as well
+
+            }
+            
+            // For read operations, collect data in range [id, id+range)
+            if (op == 0 && blk.id >= id && blk.id < id + range) {
+                int index = blk.id - id;
+                if (index >= 0 && index < D.size()) {
+                    D[index] = blk.data;
+                }
+            }
+        }
+        
+        // Add blocks to combined list
+        combined_blocks.insert(combined_blocks.end(), blocks.begin(), blocks.end());
+    }
+
     
-    // Create a map of existing blocks for faster lookup
-    unordered_map<int, int> block_indices;
-    for (size_t idx = 0; idx < combined_blocks.size(); idx++) {
-        block_indices[combined_blocks[idx].id] = idx;
+    // Update position map with new paths
+    map<int, int>& posMap = position_maps[i];
+    for (const auto& [a_prime, p_prime] : positions) {
+        posMap[a_prime] = p_prime;
     }
     
-    // Update position map with new random path p_prime1 for a1
-    posMap[a1] = p_prime1;
-    cout << "Updated position for a1=" << a1 << " to " << p_prime1 << endl;
-    
-    // Similarly for a2 if needed
-    posMap[a2] = p_prime2;
-    cout << "Updated position for a2=" << a2 << " to " << p_prime2 << endl;
-    
-    
-    // For write operations, create new blocks if they don't exist and update existing ones
+    // Steps 8-9: Update data if writing
     if (op == 1) {
-        for (int blk_id = id; blk_id < id + range && blk_id < num_blocks; blk_id++) {
-            auto it = block_indices.find(blk_id);
+        
+        // Create index for faster lookups
+        map<int, int> block_indices;
+        for (size_t idx = 0; idx < combined_blocks.size(); idx++) {
+            block_indices[combined_blocks[idx].id] = idx;
+        }
+        
+        // for j ∈ [a, a + r) do Bj.d ← D*
+        for (int j = id; j < id + range; j++) {
+            auto it = block_indices.find(j);
+            
             if (it != block_indices.end()) {
-                // Update existing block data
+                // Update existing block
                 combined_blocks[it->second].data = data;
-                cout << "Write operation: updated block " << blk_id << " with data '" << data << "'" << endl;
-                
-                // Update the paths vector for Ri (keep other paths the same)
-                if (combined_blocks[it->second].paths.size() <= i) {
-                    combined_blocks[it->second].paths.resize(i + 1, -1);
-                }
-                
-                // Assign new path for this ORAM only
-                if (blk_id >= a1 && blk_id < a1 + (1 << i)) {
-                    int offset = blk_id - a1;
-                    // Update the path tag for Ri
-                    combined_blocks[it->second].paths[i] = (p_prime1 + offset) % (1 << i);
-                } else if (blk_id >= a2 && blk_id < a2 + (1 << i)) {
-                    int offset = blk_id - a2;
-                    // Update the path tag for Ri
-                    combined_blocks[it->second].paths[i] = (p_prime2 + offset) % (1 << i);
-                }
-                
             } else {
-                // Create a new block with paths for all ORAMs
+                // Create a new block (not explicitly in pseudocode but necessary)
                 vector<int> paths(oram_trees.size(), -1);
                 
-                // Set path for ORAM i
-                if (blk_id >= a1 && blk_id < a1 + (1 << i)) {
-                    int offset = blk_id - a1;
-                    paths[i] = (p_prime1 + offset) % (1 << i);
-                } else if (blk_id >= a2 && blk_id < a2 + (1 << i)) {
-                    int offset = blk_id - a2;
-                    paths[i] = (p_prime2 + offset) % (1 << i);
+                // Determine which range this block belongs to
+                if (j >= a0 && j < a0 + (1 << i)) {
+                    int offset = j - a0;
+                    paths[i] = (positions[a0] + offset) % (1 << i);
+                } else if (j >= a0 + (1 << i) && j < a0 + 2 * (1 << i)) {
+                    int offset = j - (a0 + (1 << i));
+                    if (positions.find(a0 + (1 << i)) != positions.end()) {
+                        paths[i] = (positions[a0 + (1 << i)] + offset) % (1 << i);
+                    } else {
+                        // Fallback if we didn't do the second ReadRange
+                        paths[i] = getRandomLeaf() % (1 << i);
+                    }
                 }
                 
-                // Create the block with the data
-                block newBlock(blk_id, paths[i], data, false, paths);
+                block newBlock(j, paths[i], data, false, paths);
                 combined_blocks.push_back(newBlock);
-                cout << "Created new block " << blk_id << " with data '" << data << "'" << endl;
-                
-                // Update the block_indices map
-                block_indices[blk_id] = combined_blocks.size() - 1;
             }
         }
     }
     
-    // For read operations, get result from the appropriate block
-    if (op == 0) {
-        auto it = block_indices.find(id);
-        if (it != block_indices.end()) {
-            result = combined_blocks[it->second].data;
-            cout << "Read operation: found block " << id << " with data '" << result << "'" << endl;
-        }
-    }
-    
-    
-    // Update all l+1 ORAMs using the pointer-based approach
+    // Steps 10-13: Update stashes and evict in each tree
     for (int j = 0; j <= ceil(log2(max_range)); j++) {
-        // Get stash for current ORAM
-        unordered_map<int, block>& stash = stashes[j];
         
-        // Simply push all the read/updated blocks to this ORAM's stash
-        // Reusing the path tags stored in the blocks
+        // Step 11: stashj ← stashj \ {B ∈ stashj : a0 ≤ B.a < a0 + 2^(i+1)}
+        unordered_map<int, block>& stash = stashes[j];
+        auto it = stash.begin();
+        int removed = 0;
+        
+        while (it != stash.end()) {
+            if (it->first >= a0 && it->first < a0 + (1 << (i+1))) {
+                it = stash.erase(it);
+                removed++;
+            } else {
+                ++it;
+            }
+        }
+        
+        // Step 12: stashj ← stashj ∪ {Ba0, ..., Ba0+2^(i+1)−1}
+        int added = 0;
         for (block& blk : combined_blocks) {
-            // Ensure paths vector has enough elements
-            if (blk.paths.size() <= j) {
-                blk.paths.resize(j + 1, -1);
-            }
-            
-            // If this is ORAM j, update leaf to match the path
-            if (j == i) {
-                blk.leaf = blk.paths[j];
-            }
-            
-            // If path not set for this ORAM, assign a random path
-            if (blk.paths[j] == -1) {
-                blk.paths[j] = getRandomLeaf() % (1 << ((j == 0) ? 1 : j));
+            // Check if the block is in the range [a0, a0+2^(i+1))
+            if (blk.id >= a0 && blk.id < a0 + (1 << (i+1))) {
+                // Ensure paths vector has enough elements
+                if (blk.paths.size() <= j) {
+                    blk.paths.resize(j + 1, -1);
+                }
+                
+                // For ORAM trees other than i, we need to assign a path if not set
+                if (j != i && blk.paths[j] == -1) {
+                    blk.paths[j] = getRandomLeaf() % (1 << j);
+                }
+                
+                // If this is ORAM i, ensure leaf matches the path
                 if (j == i) {
                     blk.leaf = blk.paths[j];
                 }
+                
+                // Add block to stash
+                stash[blk.id] = blk;
+                added++;
             }
-            
-            // Add block to stash
-            stash[blk.id] = blk;
         }
         
-        cout << "Updated stash for ORAM " << j << ", now contains " << stash.size() << " blocks" << endl;
-        
-        // Perform batch eviction with 2^(i+1) paths as specified in the paper
+        // Step 13: Rj.BatchEvict(2^(i+1))
         batch_evict(1 << (i+1), j);
     }
     
+    // Step 14: cnt ← cnt + 2^(i+1)
+    for (int j = 0; j < evict_counter.size(); j++) {
+        evict_counter[j] += (1 << (i+1));
+    }
+    
+    // Step 15: if op = "read" then return D
+    if (op == 0) {
+        
+        // For single block reads (simplified case not in pseudocode)
+        if (range == 1) {
+            if (!D[0].empty()) {
+                result = D[0];
+            }
+        } else {
+            // For range reads, combine the data from vector D
+            for (int j = 0; j < range; j++) {
+                result += D[j];
+            }
+        }
+    }
     return result;
 }
 

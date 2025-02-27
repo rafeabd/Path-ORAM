@@ -63,7 +63,7 @@ int ORAM::toPhysicalIndex(int normalIndex) {
 // Convert a leaf index (0 to N-1) to a physical index at the leaf level
 int ORAM::leafToPhysicalIndex(int leaf) {
     // Calculate tree height
-    int height = ceil(log2(num_buckets + 1));
+    int height = ceil(log2(num_buckets+1));
     
     // Calculate level of leaf nodes (bottom level)
     int leafLevel = height - 1;
@@ -156,7 +156,6 @@ vector<int> ORAM::getpathindicies_ltor(int leaf){
     
     // Convert leaf index to physical index
     int physical_leaf = leafToPhysicalIndex(leaf);
-    cout << "Leaf " << leaf << " maps to physical index " << physical_leaf << endl;
     
     // Start with leaf and follow parent pointers
     int current = physical_leaf;
@@ -165,12 +164,6 @@ vector<int> ORAM::getpathindicies_ltor(int leaf){
         current = parent(current);
     }
     
-    cout << "Complete path from leaf to root: ";
-    for (int idx : path_indices) {
-        cout << idx << " ";
-    }
-    cout << endl;
-    
     return path_indices;
 }
 
@@ -178,13 +171,6 @@ vector<int> ORAM::getpathindicies_ltor(int leaf){
 vector<int> ORAM::getpathindicies_rtol(int leaf){
     vector<int> path_indices = getpathindicies_ltor(leaf);
     reverse(path_indices.begin(), path_indices.end());
-    
-    cout << "Complete path from root to leaf: ";
-    for (int idx : path_indices) {
-        cout << idx << " ";
-    }
-    cout << endl;
-    
     return path_indices;
 }
 
@@ -208,48 +194,22 @@ vector<Bucket> ORAM::read_level_range(int level, int physical_node, int range_le
 
 vector<vector<Bucket>> ORAM::read_range(int leaf){
     vector<vector<Bucket>> result;
-    
-    cout << "Reading complete path from leaf " << leaf << " to root" << endl;
-    
     // Get path from leaf to root
     vector<int> path_indices = getpathindicies_ltor(leaf);
-    cout << "Path has " << path_indices.size() << " nodes" << endl;
-    
     // For each node in the path, create a level in the result
     for (size_t i = 0; i < path_indices.size(); i++) {
         int physical_idx = path_indices[i];
-        
         // Calculate the level based on the physical index
         int level = 0;
         int temp = physical_idx + 1;
         while (temp >>= 1) {
             level++;
         }
-        
-        cout << "Reading node at physical index " << physical_idx << " (level " << level << ")" << endl;
-        
         // Create a vector with just this bucket
         vector<Bucket> level_buckets;
         level_buckets.push_back(heap[physical_idx]);
         result.push_back(level_buckets);
     }
-    
-    cout << "Read " << result.size() << " levels from the tree" << endl;
-    for (size_t i = 0; i < result.size(); i++) {
-        cout << "  Level " << i << ": " << result[i].size() << " buckets" << endl;
-        
-        // Debug: Print bucket contents
-        for (size_t j = 0; j < result[i].size(); j++) {
-            cout << "    Bucket " << j << " contents:" << endl;
-            for (const block& blk : result[i][j].getBlocks()) {
-                if (!blk.dummy) {
-                    cout << "      Block ID: " << blk.id 
-                         << ", Data: '" << blk.data << "'" << endl;
-                }
-            }
-        }
-    }
-    
     return result;
 }
 
@@ -269,10 +229,10 @@ vector<int> ORAM::get_path_labels_mod(int leaf) {
 
 Bucket ORAM::get_bucket_at_level(int level, int index_in_level) {
     int levelStart = (1 << level) - 1;
-    int levelCount = std::min((1 << level), num_buckets - levelStart);
+    int levelCount = (1 << level);
     if (index_in_level < 0 || index_in_level >= levelCount) {
         throw std::out_of_range("Bucket index out of range for the specified level");
     }
-    int physicalIndex = levelStart + index_in_level;
+    int physicalIndex = (levelStart + index_in_level)%(1<<level);
     return heap[physicalIndex];
 }

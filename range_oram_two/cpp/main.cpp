@@ -12,157 +12,172 @@
 
 using namespace std;
 
-// Utility function to print a separator line
-void printSeparator(const string& title = "") {
-    cout << "\n";
-    cout << "============================================================" << endl;
-    if (!title.empty()) {
-        cout << "    " << title << endl;
-        cout << "============================================================" << endl;
+#include <iostream>
+#include <string>
+#include <vector>
+#include <cassert>
+#include "../include/client.h"
+#include "../include/server.h"
+#include "../include/oram.h"
+
+using namespace std;
+
+// Test the read_range function (Algorithm 1) independently
+void test_read_range(Client& client) {
+    cout << "\n===== TESTING ALGORITHM 1: READ_RANGE =====" << endl;
+    
+    // Initialize some test data
+    client.init_test_data();
+    
+    // Print initial state
+    cout << "Initial stash state:" << endl;
+    client.print_stashes();
+    
+    // Test ReadRange with different parameters
+    int range_power = 1; // Testing with range 2^1 = 2
+    int id = 0;
+    
+    cout << "\nExecuting read_range(range_power=" << range_power << ", id=" << id << ")" << endl;
+    auto [blocks, p_prime] = client.read_range(range_power, id);
+    
+    cout << "read_range returned " << blocks.size() << " blocks and p_prime=" << p_prime << endl;
+    cout << "Returned blocks:" << endl;
+    for (const auto& blk : blocks) {
+        cout << "  Block ID: " << blk.id << ", Data: '" << blk.data << "'" << endl;
     }
-    cout << "\n";
+    
+    // Try another range
+    range_power = 2; // Testing with range 2^2 = 4
+    id = 4;
+    
+    cout << "\nExecuting read_range(range_power=" << range_power << ", id=" << id << ")" << endl;
+    auto [blocks2, p_prime2] = client.read_range(range_power, id);
+    
+    cout << "read_range returned " << blocks2.size() << " blocks and p_prime=" << p_prime2 << endl;
+    cout << "Returned blocks:" << endl;
+    for (const auto& blk : blocks2) {
+        cout << "  Block ID: " << blk.id << ", Data: '" << blk.data << "'" << endl;
+    }
+    
+    // Check stash and position map after read_range
+    cout << "\nStash state after read_range tests:" << endl;
+    client.print_stashes();
+    
+    cout << "\nPosition map state after read_range tests:" << endl;
+    client.print_position_maps();
+}
+
+// Test the batch_evict function (Algorithm 2) independently
+void test_batch_evict(Client& client) {
+    cout << "\n===== TESTING ALGORITHM 2: BATCH_EVICT =====" << endl;
+    
+    // Initialize some test data
+    client.init_test_data();
+    
+    // Print initial state
+    cout << "Initial stash state:" << endl;
+    client.print_stashes();
+    
+    // Manually add some blocks to stash for testing eviction
+    cout << "\nReading blocks into stash with read_range..." << endl;
+    client.read_range(2, 0); // Read range with power 2 (size 4) from ID 0
+    
+    cout << "\nStash state before batch_evict:" << endl;
+    client.print_stashes();
+    
+    // Test batch_evict with different parameters
+    int eviction_number = 2; // Evict 2 paths
+    int range_power = 2; // From ORAM with range power 2
+    
+    cout << "\nExecuting batch_evict(eviction_number=" << eviction_number 
+         << ", range_power=" << range_power << ")" << endl;
+    client.batch_evict(eviction_number, range_power);
+    
+    // Print state after eviction
+    cout << "\nStash state after batch_evict:" << endl;
+    client.print_stashes();
+    
+    cout << "\nTree state after batch_evict:" << endl;
+    client.print_tree_state(range_power, 2); // Show first 3 levels
+}
+
+// Test the access function (Algorithm 3) with simple operations
+void test_access(Client& client) {
+    cout << "\n===== TESTING ALGORITHM 3: ACCESS =====" << endl;
+    
+    // Initialize with known data
+    for (int i = 0; i < 50; i++) {
+        string data = "Test " + to_string(i);
+        cout << "\nWriting block " << i << " with data '" << data << "'" << endl;
+        string result = client.access(i, 1, 1, data);
+    }
+    
+    cout << "\nStash state after initialization:" << endl;
+    client.print_stashes();
+    
+    // Test read access
+    for (int i = 0; i < 50; i++) {
+        cout << "\nReading block " << i << endl;
+        string result = client.access(i, 1, 0, "");
+        cout << "Read returned: '" << result << "'" << endl;
+        string expected = "Test " + to_string(i);
+        cout << (result == expected ? "SUCCESS" : "ERROR") << endl;
+    }
+    
+    // Test range access
+    cout << "\nWriting to range [2, 5] with data 'Range data'" << endl;
+    client.access(2, 4, 1, "Range data");
+    
+    cout << "\nReading range [2, 5]" << endl;
+    string range_result = client.access(2, 4, 0, "");
+    cout << "Range read returned: '" << range_result << "'" << endl;
+    
+    // Verify individual blocks in range
+    for (int i = 2; i <= 5; i++) {
+        cout << "\nVerifying block " << i << endl;
+        string result = client.access(i, 1, 0, "");
+        cout << "Read returned: '" << result << "'" << endl;
+        cout << (result == "Range data" ? "SUCCESS" : "ERROR") << endl;
+    }
 }
 
 int main() {
-    // Configuration parameters - start small for easier debugging
-    const int NUM_BLOCKS = 16;       // Total number of blocks in the system
-    const int BUCKET_CAPACITY = 4;   // Z parameter - blocks per bucket
-    const int MAX_RANGE = 8;         // Maximum range size to support
+    // Initialize with small values for debugging
+    int num_buckets = 10;
+    int bucket_capacity = 4;
+    int max_range = 250;
     
-    printSeparator("INITIALIZATION");
-    cout << "Creating rORAM with:" << endl;
-    cout << "- " << NUM_BLOCKS << " total blocks" << endl;
-    cout << "- " << BUCKET_CAPACITY << " blocks per bucket (Z)" << endl;
-    cout << "- " << MAX_RANGE << " maximum range size" << endl;
-    cout << "- " << ceil(log2(MAX_RANGE)) + 1 << " sub-ORAMs" << endl;
+    // Create server and client
+    Server server(num_buckets, bucket_capacity, max_range);
+    Client client(num_buckets, bucket_capacity, &server, max_range);
     
-    // Create a server and client
-    Server server(NUM_BLOCKS, BUCKET_CAPACITY, MAX_RANGE);
-    Client client(NUM_BLOCKS, BUCKET_CAPACITY, &server, MAX_RANGE);
+    cout << "=== ORAM ALGORITHM TESTING ===" << endl;
+    cout << "Initialized client with " << num_buckets << "buckets" 
+         << bucket_capacity << ", max range " << max_range << endl;
     
-    // Step 1: Initialize the system with some test data
-    printSeparator("STEP 1: INITIALIZING TEST DATA");
-    for (int i = 0; i < 8; i++) {
-        string data = "Block " + to_string(i) + " data";
-        cout << "Writing block " << i << " with data: '" << data << "'" << endl;
-        client.access(i, 1, 1, data);
+    // Test each algorithm individually
+    /*
+    test_read_range(client);
+    
+    // Reinitialize client for clean state
+    Client client2(num_buckets, bucket_capacity, &server, max_range);
+    test_batch_evict(client2);
+    
+    // Reinitialize client for clean state
+    Client client3(num_buckets, bucket_capacity, &server, max_range);
+    test_access(client3);
+    */
+    for (int i = 0; i < 5; i++) {
+        string data = "Test " + to_string(i);
+        string result = client.access(i, 1, 1, data);
+    }
+    for (int i = 0; i < 5; i++) {
+        string result = client.access(i, 1, 0, "");
+        string expected = "Test " + to_string(i);
+        cout << (result == expected ? "SUCCESS" : "ERROR") << endl;
     }
     
-    // Check state after initialization
-    printSeparator("STATE AFTER INITIALIZATION");
-    client.print_position_maps();
-    client.print_stashes();
-    client.print_tree_state(0); // Show tree R0 state
+    cout << "\n=== All tests completed ===" << endl;
     
-    // Step 2: Test simple read operation
-    printSeparator("STEP 2: SIMPLE READ TEST");
-    int test_block_id = 3;
-    cout << "Reading block " << test_block_id << endl;
-    string read_result = client.access(test_block_id, 1, 0, "");
-    cout << "Read result: '" << read_result << "'" << endl;
-    
-    // Check state after read
-    printSeparator("STATE AFTER READ");
-    client.print_stashes();
-    
-    // Step 3: Test simple write operation
-    printSeparator("STEP 3: SIMPLE WRITE TEST");
-    int write_block_id = 5;
-    string write_data = "Updated block 5";
-    cout << "Writing block " << write_block_id << " with data: '" << write_data << "'" << endl;
-    client.access(write_block_id, 1, 1, write_data);
-    
-    // Verify the write
-    cout << "Reading back block " << write_block_id << " to verify write" << endl;
-    string verify_data = client.access(write_block_id, 1, 0, "");
-    cout << "Read result: '" << verify_data << "'" << endl;
-    if (verify_data == write_data) {
-        cout << "PASS: Write operation successful" << endl;
-    } else {
-        cout << "FAIL: Write verification failed" << endl;
-        cout << "  Expected: '" << write_data << "'" << endl;
-        cout << "  Got: '" << verify_data << "'" << endl;
-    }
-    
-    // Step 4: Test range write
-    printSeparator("STEP 4: RANGE WRITE TEST");
-    int range_start = 4;
-    int range_size = 4;
-    string range_data = "Range data";
-    
-    cout << "Writing '" << range_data << "' to range [" << range_start 
-         << ", " << (range_start + range_size - 1) << "]" << endl;
-    
-    client.access(range_start, range_size, 1, range_data);
-    
-    // Verify range write
-    cout << "Verifying range write:" << endl;
-    for (int i = range_start; i < range_start + range_size; i++) {
-        string block_data = client.access(i, 1, 0, "");
-        cout << "Block " << i << " data: '" << block_data << "'" << endl;
-        if (block_data == range_data) {
-            cout << "PASS: Block " << i << " contains expected data" << endl;
-        } else {
-            cout << "FAIL: Block " << i << " verification failed" << endl;
-            cout << "  Expected: '" << range_data << "'" << endl;
-            cout << "  Got: '" << block_data << "'" << endl;
-        }
-    }
-    
-    // Detailed check of all trees to verify data consistency
-    printSeparator("VERIFYING DATA CONSISTENCY ACROSS ALL TREES");
-    for (int tree_idx = 0; tree_idx <= ceil(log2(MAX_RANGE)); tree_idx++) {
-        cout << "=== TREE R" << tree_idx << " DATA CHECK ===" << endl;
-        
-        // For each block in the range
-        for (int blk_id = range_start; blk_id < range_start + range_size; blk_id++) {
-            // Look for this block in the tree's bucket levels
-            bool found = false;
-            ORAM* tree = client.oram_trees[tree_idx];
-            int h = ceil(log2(tree->num_buckets));
-            
-            // Check each level of the tree
-            for (int level = 0; level < h; level++) {
-                int level_start = (1 << level) - 1;
-                int level_end = (1 << (level+1)) - 1;
-                
-                for (int bucket_idx = level_start; bucket_idx < level_end && bucket_idx < tree->num_buckets; bucket_idx++) {
-                    int normal_idx = tree->toNormalIndex(bucket_idx);
-                    Bucket bucket = tree->read_bucket(normal_idx);
-                    
-                    // Check each block in the bucket
-                    for (const block& b : bucket.getBlocks()) {
-                        if (!b.dummy && b.id == blk_id) {
-                            cout << "Block " << blk_id << " found in tree R" << tree_idx 
-                                 << ", level " << level << ", bucket " << bucket_idx 
-                                 << " with data: '" << b.data << "'" << endl;
-                            found = true;
-                            if (b.data == range_data) {
-                                cout << "  PASS: Data matches expected value" << endl;
-                            } else {
-                                cout << "  FAIL: Data doesn't match expected value" << endl;
-                                cout << "    Expected: '" << range_data << "'" << endl;
-                                cout << "    Got: '" << b.data << "'" << endl;
-                            }
-                        }
-                    }
-                }
-            }
-            
-            if (!found) {
-                cout << "Block " << blk_id << " not found in tree R" << tree_idx << endl;
-            }
-        }
-    }
-    
-    // Final check on all trees
-    printSeparator("FINAL SYSTEM STATE");
-    for (int i = 0; i <= ceil(log2(MAX_RANGE)); i++) {
-        client.print_tree_state(i);
-    }
-    client.print_position_maps();
-    client.print_stashes();
-    
-    printSeparator("DEBUG COMPLETE");
     return 0;
 }

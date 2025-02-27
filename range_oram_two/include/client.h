@@ -16,7 +16,7 @@ private:
     int L;  // Height of ORAM tree
     Server* server;
     int max_range;
-    int num_blocks;
+    int num_buckets;
     int bucket_capacity;
     
     int getRandomLeaf();  // Generate a random leaf index
@@ -28,7 +28,7 @@ public:
     std::vector<std::map<int, int>> position_maps;  // Position map for each ORAM
     std::vector<int> evict_counter;  // Eviction counter for each ORAM
     
-    Client(int num_blocks, int bucket_capacity, Server* server_ptr, int max_range);
+    Client(int num_buckets, int bucket_capacity, Server* server_ptr, int max_range);
     
     // Read a range of blocks starting at block 'id' with given range power
     std::tuple<std::vector<block>, int> read_range(int range_power, int id);
