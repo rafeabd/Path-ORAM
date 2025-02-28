@@ -2,29 +2,30 @@
 #include "../include/encryption.h"
 #include <iostream>
 #include <cstring>
-#include <iostream>
 #include <sstream>
 #include <iomanip>
 
 using namespace std;
 
-block::block(int id, int leaf, const string& data, bool dummy) {
+block::block(int id, int leaf, const string& data, bool dummy, const vector<int>& paths) {
     this->id = id;
     this->leaf = leaf;
     this->data = data;
     this->dummy = dummy;
-    this->path = vector<int>();
+    this->paths = paths;
 }
 
-void block :: print_block(bool path) {
+block::block() : id(-1), leaf(-1), data(""), dummy(true), paths(vector<int>()) {}
+
+void block::print_block(bool print_paths) {
     cout << "Block ID: " << id;
     cout << ", Block Leaf: " << leaf;
     cout << ", Block Data: " << data;
     cout << ", Block Dummy: " << dummy << endl;
-    if (path) {
-        cout << "Block Path: ";
-        for (int i = 0; i < this->path.size(); i++) {
-            cout << this->path[i] << " ";
+    if (print_paths && !paths.empty()) {
+        cout << "Block Paths: ";
+        for (int i = 0; i < paths.size(); i++) {
+            cout << "R" << i << ":" << paths[i] << " ";
         }
         cout << endl;
     }

@@ -54,6 +54,10 @@
         "algorithm": "cpp",
         "unordered_set": "cpp",
         "__tree": "cpp",
-        "set": "cpp"
+        "set": "cpp",
+        "map": "cpp",
+        "list": "cpp",
+        "forward_list": "cpp",
+        "span": "cpp"
     }
 }

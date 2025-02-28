@@ -13,10 +13,12 @@ struct block {
     int id;
     string data;
     bool dummy;
-    vector<int> path;
+    vector<int> paths;
 
-    block(int id = -1, int leaf = -1, const string& data = "dummy", bool dummy = true);
+    block();
     void print_block(bool show_path = false);
+    block(int id, int leaf, const string& data, bool dummy, const vector<int>& paths);
+
 };
 
 #endif

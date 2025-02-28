@@ -8,5 +8,19 @@ From bottom up, for each path, if a block is in that path, fill up the bucket an
 Write back.
 
 Questions:
-	-on initialization, only dummy blocks are assigned.
-	-What happens if the block starting a range, a power of 2, doesn't exist.
+	-on write, read_range has a range to query but not a PM entry, does it generate a new random one?
+
+
+potential issues:
+Read Range
+	- line 109, get_bucket_at_level takes an index and then calls
+	get bucket at level which converts it to phsycial, this conversion
+	might be wrong.
+Batch Evict
+	- Line 167, bets bucket indexes for a level manually, could be
+	incorrect, would be better to implement this in oram to simplify.
+	- Line 175, same thing, reads all buckets in level. Better to 
+	implement in oram.
+	- Line 238, incorrectly calculates whether a block can be placed in
+	a bucket.
+	- Line 288, check index calculation

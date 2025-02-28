@@ -25,6 +25,7 @@ public:
     Server* server;
     int max_range;
     int num_blocks;
+    int num_buckets;
     int bucket_capacity;
     vector<ORAM*> oram_trees;
     vector<unordered_map<int, block> > stashes;
@@ -36,6 +37,13 @@ public:
     string access(int id, int range, int op, string data);
     void printRangeTree(int range);
     int getRandomLeaf();
+    void print_stashes();
+    void print_position_maps();
+    void print_tree_state(int tree_index, int max_level);
+    void init_test_data();
+    void print_path(int leaf, int tree_n);
+
+
     
 };
 

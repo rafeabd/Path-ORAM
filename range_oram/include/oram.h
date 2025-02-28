@@ -37,6 +37,9 @@ public:
     vector<int> get_path_labels_mod(int leaf);
     Bucket get_bucket_at_level(int level, int index_in_level);
     int leafToPhysicalIndex(int leaf);
+    void updateBucketAtLevel(int level, int index_in_level, const Bucket &newBucket);
+    vector<Bucket> readBucketsAndClear(int level, int start_index, int count);
+    vector<Bucket> readBucketsAtLevel(int level, int start_index, int count);
 };
 
 #endif
