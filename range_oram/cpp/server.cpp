@@ -1,4 +1,4 @@
-/*
+
 #include "../include/server.h"
 #include "../include/bucket.h"
 #include "../include/oram.h"
@@ -10,29 +10,7 @@
 
 using namespace std;
 
-Server::Server(int num_blocks, int bucket_size, BucketHeap initialized_tree)
-    : Z(bucket_size),
-      L(ceil(log2(num_blocks))),
-      oram(move(initialized_tree)) {}
-
-vector<Bucket> Server::give_path(int leaf) {
-    int bucket_index = leaf + ((1 << L) - 1);
-    
-    // Get the indices first
-    vector<int> pathIndices = oram.getPathIndices(bucket_index);
-    vector<Bucket> path = oram.getPathBuckets(bucket_index);
-
-    for (int id : pathIndices) {
-        oram.clear_bucket(id);  
-    }
-    return path;
+Server::Server(int num_blocks, int bucket_size, int biggest_range){
+    this->Z = bucket_size;
+    this->L = ceil(log2(num_blocks));
 }
-
-void Server::write_bucket(const Bucket& path, int bucket_index) {
-    oram.updateBucket(bucket_index, path);
-}
-
-void Server::printHeap() {
-    oram.printHeap();
-}
-*/

@@ -1,6 +1,29 @@
-for a, where a = 2^i (i = range such that 2^i<total blocks)
-for x such that x*a < total blocks
-	x is mapped to a random leaf node, following normal path oram;
-	Then, to access the range x to x+2^i, you read the leaf node paths
-	in bit reverse lexographic order from the leaf of x, and each one of
-	these paths will have a block in the range we want.
+-Remeber to encrypt initialized buckets after working.\
+
+batch_eviction:
+-For each level read 2^i buckets in BRL
+	-if block found is not in stash, put it in.
+From bottom up, for each path, if a block is in that path, fill up the bucket and then move to the next bucket.
+
+Write back.
+
+Questions:
+	-on write, read_range has a range to query but not a PM entry, does it generate a new random one?
+	-Is using prefix bits to match a bucket to a block standard?
+	-When writing a block, lets say one block, do the paths get calculated
+	for all range orams or just one and then randomely assigned for the 
+	others
+
+potential issues:
+Read Range
+	- line 109, get_bucket_at_level takes an index and then calls
+	get bucket at level which converts it to phsycial, this conversion
+	might be wrong.
+Batch Evict
+	- Line 167, bets bucket indexes for a level manually, could be
+	incorrect, would be better to implement this in oram to simplify.
+	- Line 175, same thing, reads all buckets in level. Better to 
+	implement in oram.
+	- Line 238, incorrectly calculates whether a block can be placed in
+	a bucket.
+	- Line 288, check index calculation

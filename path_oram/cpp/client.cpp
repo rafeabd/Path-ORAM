@@ -103,6 +103,7 @@ vector<Bucket> Client::readPath(int leaf) {
             b = decryptBlock(b, key);
         }
     }
+
     return path_buckets;
 }
 

@@ -14,7 +14,7 @@ using namespace std;
 
 int main() {
     // initial parameters
-    int num_buckets_low = 10; // lower bound for buckets - fixed
+    int num_buckets_low = 1000; // lower bound for buckets - fixed
     cout << "num buckets" << num_buckets_low << endl;
     int bucket_capacity = 4;
     int L = ceil(log2(num_buckets_low));

@@ -1,3 +1,4 @@
+
 #include <iostream>
 #include <openssl/hmac.h>
 #include <openssl/evp.h>
@@ -14,6 +15,14 @@
 
 using namespace std;
 
+vector<unsigned char> generateEncryptionKey(size_t length) {
+    vector<unsigned char> key(length);
+    if (!RAND_bytes(key.data(), length)) {
+        throw runtime_error("Error generating random bytes for key");
+    }
+    return key;
+}
+/*
 // Encodes a vector of unsigned char into a hexadecimal string.
 string hexEncode(const vector<unsigned char>& data) {
     ostringstream oss;
@@ -81,7 +90,7 @@ vector<unsigned char> encryptData(const vector<unsigned char>& key, const vector
         EVP_CIPHER_CTX_free(ctx);
         throw std::runtime_error("EVP_EncryptInit_ex failed");
     }
-    */
+    
     
     // output buf, randomized #+cipher
     vector<unsigned char> ciphertext(iv); // Prepend IV.
@@ -97,16 +106,16 @@ vector<unsigned char> encryptData(const vector<unsigned char>& key, const vector
         EVP_CIPHER_CTX_free(ctx);
         throw std::runtime_error("EVP_EncryptUpdate failed");
     }
-    */
+    
     EVP_EncryptUpdate(ctx, ciphertext.data() + iv_length, &len, plaintext.data(), plaintext.size());
     ciphertext_len = len;
     EVP_EncryptFinal_ex(ctx, ciphertext.data() + iv_length + len, &len);
-    /*
+    
     if(1 != EVP_EncryptFinal_ex(ctx, ciphertext.data() + iv_length + len, &len)) {
         EVP_CIPHER_CTX_free(ctx);
         throw std::runtime_error("EVP_EncryptFinal_ex failed");
     }
-    */
+    
     ciphertext_len += len;
     
     EVP_CIPHER_CTX_free(ctx);
@@ -220,3 +229,4 @@ block decryptBlock(const block &b, const vector<unsigned char>& key) {
     //cout << "Decrypted block: " << b.data << " -> " << plainText << endl;
     return deserializeBlock(plainText);
 }
+*/

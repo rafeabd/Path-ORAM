@@ -11,7 +11,7 @@ private:
     vector<block> blocks;
     int height;
     int bit_reversed_order;
-    int Z;  
+    int Z;
 
 public:
     explicit Bucket(int capacity = 4);
@@ -26,6 +26,7 @@ public:
 
     void print_bucket();
     bool startaddblock(block& newBlock);
+
 };
 
 #endif
