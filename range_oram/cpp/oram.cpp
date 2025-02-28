@@ -162,11 +162,7 @@ void ORAM::updateBucket(int logicalIndex, const Bucket &newBucket) {
     heap[physicalIndex] = newBucket;
 }
 
-/** 
- * Read all buckets at the given level in the range [start_index, start_index + count),
- * wrapping around within that level if necessary. Returns a vector of buckets.
- * (Used for range reads and batch eviction.)
- */
+
 vector<Bucket> ORAM::readBucketsAtLevel(int level, int start_index, int count) {
     int levelStart = (1 << level) - 1;
     int levelCount = min((1 << level), num_buckets - levelStart);

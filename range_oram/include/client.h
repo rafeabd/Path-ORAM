@@ -42,6 +42,7 @@ public:
     void print_tree_state(int tree_index, int max_level);
     void init_test_data();
     void print_path(int leaf, int tree_n);
+    int getRandomLeafInRange(int start, int range_size);
 
 
     

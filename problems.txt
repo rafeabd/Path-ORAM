@@ -9,7 +9,10 @@ Write back.
 
 Questions:
 	-on write, read_range has a range to query but not a PM entry, does it generate a new random one?
-
+	-Is using prefix bits to match a bucket to a block standard?
+	-When writing a block, lets say one block, do the paths get calculated
+	for all range orams or just one and then randomely assigned for the 
+	others
 
 potential issues:
 Read Range

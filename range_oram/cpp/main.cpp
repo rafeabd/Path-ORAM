@@ -110,9 +110,9 @@ void test_access(Client& client) {
 }
 
 int main() {
-    int num_buckets = 25;
+    int num_buckets = 100;
     int bucket_capacity = 4;
-    int max_range = 30;
+    int max_range = 50;
     
 
     Server server(num_buckets, bucket_capacity, max_range);
@@ -121,7 +121,24 @@ int main() {
     cout << "=== ORAM ALGORITHM TESTING ===" << endl;
     cout << "Initialized client with " << num_buckets << " buckets" << " of size "
          << bucket_capacity << ", max range " << max_range << endl;
+
+    for (int i = 0; i < 100; i++) {
+        string data = "Test " + to_string(i);
+        string result = client.access(i, 1, 1, data);
+    }
     
+    
+    //client.print_stashes();
+    for(int i =0; i< client.oram_trees.size(); i++){
+        //client.print_tree_state(i,3);
+    }
+    //client.print_stashes();
+    //client.print_position_maps();
+
+    cout << "reading data" << endl;
+    cout << "read data:" << client.access(0,50,0,"") << endl;
+
+
     /*
     test_read_range(client);
     
@@ -134,22 +151,10 @@ int main() {
     test_access(client3);
     */
    
-    for (int i = 0; i < 50; i++) {
-        string data = "Test " + to_string(i);
-        string result = client.access(i, 1, 1, data);
-    }
-    
-    
-    //client.print_stashes();
-    for(int i =0; i< client.oram_trees.size(); i++){
-        client.print_tree_state(i,10);
-    }
-    client.print_stashes();
-    client.print_position_maps();
     //cout << client.access(1,30,0,"") << endl;
 
-    cout << "reading" << endl;
-    cout << client.access(1,5,0,"") << endl;
+    //cout << "reading" << endl;
+    //cout << client.access(1,5,0,"") << endl;
     //cout << client.access(25,25,0,"") << endl;
     //cout << client.access(50,25,0,"") << endl;
     //cout << client.access(75,25,0,"") << endl;

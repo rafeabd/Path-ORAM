@@ -166,7 +166,7 @@ void Client::batch_evict(int eviction_number, int range_power) {
     
     // line 6-11, put blocks from stash into a "usable blocks" in bottom-up
     map<pair<int, int>, Bucket> modified_buckets;
-    vector<int> successfully_evicted_blocks;
+    vector<int> successfully_evicted_blocks; //just helper, remove in final implementation.
     
     for (int j = height - 1; j >= 0; j--) {
         // target bucket indices at level j for eviction paths
@@ -211,7 +211,7 @@ void Client::batch_evict(int eviction_number, int range_power) {
                 }
             }
             
-            // if new, write back. SHould probably write back all of them.
+            // if new, write back...Should probably write back all of them.
             bool hasRealBlock = false;
             for (const block& b : newBucket.getBlocks()) {
                 if (!b.dummy) { hasRealBlock = true; break; }
@@ -297,35 +297,26 @@ string Client::access(int id, int range, int op, string data) {
         posMap[base_addr] = new_leaf;
     }
     
-    // for write, write new data (lines 8-9)
+    // for write -lines 8-9
     if (op == 1) {
-        // lookup existing blocks
+        // try to find exisitng block with id.
         map<int, int> block_index;
         for (size_t idx = 0; idx < combined_blocks.size(); idx++) {
             block_index[combined_blocks[idx].id] = idx;
         }
-        // for [id, id+range), update OR CREATE!?
+        // for logical add j in write range
         for (int j = id; j < id + range; j++) {
             auto it = block_index.find(j);
             if (it != block_index.end()) {
-                // update data in an existing block
                 combined_blocks[it->second].data = data;
             } else {
-                // create a new block for this address
                 vector<int> paths(oram_trees.size(), -1);
-                // set path for current tree i using the base new pos
-                int base_i = (j / (1 << i)) * (1 << i);
-                int offset = j - base_i;
-                if (positions.find(base_i) != positions.end()) {
-                    paths[i] = positions[base_i] + offset;
-                } else {
-                    paths[i] = getRandomLeaf();
-                }
-                // For other trees, assign random paths?!
+                // For each ORAM k, get leaf range
                 for (int k = 0; k < oram_trees.size(); k++) {
-                    if (k != i) {
-                        paths[k] = getRandomLeaf();
-                    }
+                    // get j to the lower multiple of 2^k
+                    int range_size = 1 << k;
+                    int base_k = (j / range_size) * range_size;
+                    paths[k] = getRandomLeafInRange(base_k, range_size);
                 }
                 block newBlock(j, paths[i], data, false, paths);
                 combined_blocks.push_back(newBlock);
@@ -422,6 +413,21 @@ int Client::getRandomLeaf() {
     return random_value % (1 << (L - 1));
 }
 
+int Client::getRandomLeafInRange(int start, int range_size) {
+    unsigned char buf[4];
+    if (RAND_bytes(buf, sizeof(buf)) != 1) {
+        throw runtime_error("Failed to generate random bytes");
+    }
+    unsigned int random_value;
+    memcpy(&random_value, buf, sizeof(random_value));
+    int normstart_to_physical = toPhysicalIndex(start);
+    int physical_index = (normstart_to_physical + (random_value % range_size))%((num_buckets+1)/2);
+    //cout << "physical_index: " << physical_index << endl;
+    //cout << "normalIndex: " << toNormalIndex(physical_index) << endl;
+    return toNormalIndex(physical_index);
+}
+
+
 // Debug helper methods
 
 void Client::print_stashes() {
@@ -483,6 +489,9 @@ void Client::print_tree_state(int tree_index, int max_level) {
             for (const block& b : bucket.getBlocks()) {
                 if (!b.dummy) {
                     cout << "Block " << b.id << " ('" << b.data.substr(0, 10) << "') ";
+                    for (size_t j = 0; j < b.paths.size(); j++) {
+                        cout << b.paths[j];
+                    }
                     has_blocks = true;
                 }
             }
