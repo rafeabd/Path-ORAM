@@ -1,4 +1,6 @@
 -Remeber to encrypt initialized buckets after working.\
+-Check that lowercase l is max_range and not L;
+
 
 batch_eviction:
 -For each level read 2^i buckets in BRL
@@ -13,7 +15,11 @@ Questions:
 	-When writing a block, lets say one block, do the paths get calculated
 	for all range orams or just one and then randomely assigned for the 
 	others
-
+	-If my first write is id = 3, where do I put it without having 
+	assigned paths for the 2^i.
+	-Do I have to have written a range in order to query it? For example, if
+	I write blocks 1-10 individually, with range 1, and then query 1 with
+	range 10, should this work.
 potential issues:
 Read Range
 	- line 109, get_bucket_at_level takes an index and then calls

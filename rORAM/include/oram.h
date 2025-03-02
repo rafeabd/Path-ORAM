@@ -40,6 +40,14 @@ public:
     void updateBucketAtLevel(int level, int index_in_level, const Bucket &newBucket);
     vector<Bucket> readBucketsAndClear(int level, int start_index, int count);
     vector<Bucket> readBucketsAtLevel(int level, int start_index, int count);
+
+    vector<Bucket> simple_buckets_at_level(int level, int leaf, int range_power);
+    void simple_update_bucket(int level, int inx_in_level, Bucket updated_bucket);
+
+    int simple_toPhysical(int index, int level);
+    block writeBlockToPath(const block &b, int logicalLeaf);
+
+    vector<Bucket> try_buckets_at_level(int level, int leaf, int range_power);
 };
 
 #endif

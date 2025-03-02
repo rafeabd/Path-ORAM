@@ -32,7 +32,6 @@ int ORAM::bitReverse(int x, int bits) {
     return y;
 }
 
-// Convert a physical (bit-reversed) index to its normal (logical) index.
 int ORAM::toNormalIndex(int physicalIndex) {
     int level = 0;
     int temp = physicalIndex + 1;
@@ -45,7 +44,6 @@ int ORAM::toNormalIndex(int physicalIndex) {
     return levelStart + pos_normal;
 }
 
-// Convert a normal (logical) index to its physical (bit-reversed) index.
 int ORAM::toPhysicalIndex(int normalIndex) {
     int level = 0;
     int temp = normalIndex + 1;
@@ -58,45 +56,37 @@ int ORAM::toPhysicalIndex(int normalIndex) {
     return levelStart + pos_br;
 }
 
-// Convert a leaf index (0-based) to the corresponding physical index at the leaf level.
 int ORAM::leafToPhysicalIndex(int leaf) {
-    int height = ceil(log2(num_buckets + 1));
+    int height = ceil(log2(num_buckets + 1))-1;
     int leafLevel = height - 1;
     int firstLeafIndex = (1 << leafLevel) - 1;
     int normalIndex = firstLeafIndex + leaf;
     return toPhysicalIndex(normalIndex);
 }
 
-// Return the physical index of the parent of node i.
 int ORAM::parent(int i) {
-    if (i == 0) {
-        return -1;
-    }
+    if (i == 0) return -1;
     int normal_index = toNormalIndex(i);
     int normal_parent = (normal_index - 1) / 2;
     return toPhysicalIndex(normal_parent);
 }
 
-// Return the physical index of the left child of node i.
 int ORAM::leftChild(int i) {
     int normal_index = toNormalIndex(i);
     int normal_left = 2 * normal_index + 1;
     return toPhysicalIndex(normal_left);
 }
 
-// Return the physical index of the right child of node i.
 int ORAM::rightChild(int i) {
     int normal_index = toNormalIndex(i);
     int normal_right = 2 * normal_index + 2;
     return toPhysicalIndex(normal_right);
 }
 
-// Read the bucket at the given logical index (using normal indexing).
 Bucket ORAM::read_bucket(int logical_index) {
     return heap[toPhysicalIndex(logical_index)];
 }
 
-// Read a range of buckets at a given level starting from a given physical node (wrap-around).
 vector<Bucket> ORAM::read_level_range(int level, int physical_node, int range_length) {
     vector<Bucket> result;
     int levelStart = (1 << level) - 1;
@@ -109,8 +99,6 @@ vector<Bucket> ORAM::read_level_range(int level, int physical_node, int range_le
     return result;
 }
 
-// Read all buckets along the path from a given leaf (returns a vector of vectors,
-// each inner vector holding the bucket at that level).
 vector<vector<Bucket>> ORAM::read_range(int leaf) {
     vector<vector<Bucket>> result;
     vector<int> path_indices = getpathindicies_ltor(leaf);
@@ -122,7 +110,6 @@ vector<vector<Bucket>> ORAM::read_range(int leaf) {
     return result;
 }
 
-// Compute path indices from leaf to root (returns physical indices).
 vector<int> ORAM::getpathindicies_ltor(int leaf) {
     vector<int> path_indices;
     int physical_leaf = leafToPhysicalIndex(leaf);
@@ -134,14 +121,12 @@ vector<int> ORAM::getpathindicies_ltor(int leaf) {
     return path_indices;
 }
 
-// Compute path indices from root to leaf (returns physical indices).
 vector<int> ORAM::getpathindicies_rtol(int leaf) {
     vector<int> path_indices = getpathindicies_ltor(leaf);
     reverse(path_indices.begin(), path_indices.end());
     return path_indices;
 }
 
-// Retrieve the bucket at a given level and index within that level (normal indexing for that level).
 Bucket ORAM::get_bucket_at_level(int level, int index_in_level) {
     int levelStart = (1 << level) - 1;
     int levelCount = min((1 << level), num_buckets - levelStart);
@@ -153,7 +138,6 @@ Bucket ORAM::get_bucket_at_level(int level, int index_in_level) {
     return heap[physicalIndex];
 }
 
-// Update the bucket at the given logical (normal) index with the new bucket.
 void ORAM::updateBucket(int logicalIndex, const Bucket &newBucket) {
     int physicalIndex = toPhysicalIndex(logicalIndex);
     if (physicalIndex < 0 || physicalIndex >= heap.size()) {
@@ -162,30 +146,23 @@ void ORAM::updateBucket(int logicalIndex, const Bucket &newBucket) {
     heap[physicalIndex] = newBucket;
 }
 
-
 vector<Bucket> ORAM::readBucketsAtLevel(int level, int start_index, int count) {
     int levelStart = (1 << level) - 1;
-    int levelCount = min((1 << level), num_buckets - levelStart);
+    int levelCount = 1 << level;
     set<int> indices;
     for (int t = start_index; t < start_index + count; ++t) {
         indices.insert(t % levelCount);
     }
     vector<Bucket> buckets;
     for (int idx : indices) {
-        // Convert level index to physical and fetch bucket
         int normalIndex = levelStart + idx;
-        if (normalIndex >= num_buckets) continue;  // skip if beyond tree size (safety check)
+        if (normalIndex >= num_buckets) continue;
         int physicalIndex = toPhysicalIndex(normalIndex);
         buckets.push_back(heap[physicalIndex]);
     }
     return buckets;
 }
 
-/**
- * Read all buckets at the given level for the range [start_index, start_index + count),
- * and clear those buckets in the ORAM tree (replace with dummy buckets). 
- * Returns the vector of buckets read.
- */
 vector<Bucket> ORAM::readBucketsAndClear(int level, int start_index, int count) {
     int levelStart = (1 << level) - 1;
     int levelCount = min((1 << level), num_buckets - levelStart);
@@ -199,22 +176,85 @@ vector<Bucket> ORAM::readBucketsAndClear(int level, int start_index, int count) 
         if (normalIndex >= num_buckets) continue;
         int physicalIndex = toPhysicalIndex(normalIndex);
         buckets.push_back(heap[physicalIndex]);
-        // Replace the bucket with an empty bucket of equal capacity
+        // Clear the bucket by replacing with an empty dummy bucket
         heap[physicalIndex] = Bucket(bucketCapacity);
     }
     return buckets;
 }
 
-/**
- * Update the bucket at the given level and index within that level with a new bucket.
- * (Level is 0-indexed, index_in_level is the bucket's position at that level in normal ordering.)
- */
 void ORAM::updateBucketAtLevel(int level, int index_in_level, const Bucket &newBucket) {
     int levelStart = (1 << level) - 1;
-    int levelCount = min((1 << level), num_buckets - levelStart);
+    int levelCount = (1 << level);
     if (index_in_level < 0 || index_in_level >= levelCount) {
         throw std::out_of_range("Bucket index out of range for the specified level");
     }
     int normalIndex = levelStart + index_in_level;
     updateBucket(normalIndex, newBucket);
+}
+
+vector<Bucket> ORAM::simple_buckets_at_level(int level, int leaf, int range_power) {
+    int physical_leaf = toPhysicalIndex(leaf);
+    int physical_index = physical_leaf % (1 << level);
+    int level_start = (1 << level) - 1;
+    int level_count = (1 << level);
+    vector<Bucket> result;
+    for (int i = 0; i < (1 << range_power); i++) {
+        int idx = (physical_index + i) % level_count;
+        cout << "idx: " << idx << endl;
+        result.push_back(heap[level_start + idx]);
+    }
+    return result;
+}
+
+vector<Bucket> ORAM::try_buckets_at_level(int level, int leaf, int range_power) {
+    int physical_leaf = leafToPhysicalIndex(leaf);
+    int level_start = (1 << level) - 1;
+    int level_count = min((1 << level), num_buckets - level_start);
+    
+    int height = ceil(log2(num_buckets + 1)) - 1;
+    int leaf_level = height - 1;
+    
+    int physical_index;
+    
+    if (level == leaf_level) {
+        physical_index = physical_leaf - level_start;
+    } else {
+        int logical_leaf = toNormalIndex(physical_leaf);
+        int logical_ancestor = logical_leaf;
+        for (int i = 0; i < leaf_level - level; i++) {
+            logical_ancestor = (logical_ancestor - 1) / 2;
+        }
+        int physical_ancestor = toPhysicalIndex(logical_ancestor);
+        physical_index = physical_ancestor - level_start;
+    }
+    vector<Bucket> result;
+    for (int i = 0; i < (1 << range_power); i++) {
+        int idx = (physical_index + i) % level_count;
+        result.push_back(heap[level_start + idx]);
+    }
+    return result;
+}
+
+void ORAM::simple_update_bucket(int level, int inx_in_level, Bucket updated_bucket) {
+    int level_start = (1 << level) - 1;
+    heap[level_start + inx_in_level] = updated_bucket;
+}
+
+int ORAM::simple_toPhysical(int index, int level) {
+    if (level == 0) {
+        return 0;
+    }
+    int levelStart = (1 << level) - 1;
+    int pos_br = bitReverse(index, level);
+    return levelStart + pos_br;
+}
+
+block ORAM::writeBlockToPath(const block &b, int logicalLeaf) {
+    vector<int> path_indices = getpathindicies_ltor(logicalLeaf);
+    for (int bucketIndex : path_indices) {
+        if (heap[bucketIndex].addBlock(b)) {
+            return block();
+        }
+    }
+    return b;
 }

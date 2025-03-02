@@ -7,16 +7,17 @@
 using namespace std;
 
 Bucket::Bucket(int capacity) : Z(capacity) {
-    // Init bucket with dummy blocks
+    // Initialize bucket with Z dummy blocks
     for (int i = 0; i < Z; i++) {
-        blocks.push_back(block());
-    } 
+        blocks.push_back(block());  // push a dummy block
+    }
 }
 
 bool Bucket::addBlock(const block& newBlock) {
     if (!hasSpace()) {
         return false;
     }
+    // Place the new block in the first dummy slot
     for (block& b : blocks) {
         if (b.dummy) {
             b = newBlock;
@@ -27,12 +28,12 @@ bool Bucket::addBlock(const block& newBlock) {
 }
 
 bool Bucket::startaddblock(block& newBlock) {
-    // add block if not at capacity
+    // Add block if not at capacity (used for initial building, if needed)
     if (blocks.size() < Z) {
         blocks.push_back(newBlock);
         return true;
     }
-    // get rid of dummy block
+    // Otherwise, replace a dummy block if one exists
     for (block &b : blocks) {
         if (b.dummy) {
             b = newBlock;
@@ -52,7 +53,7 @@ block Bucket::remove_block(int id) {
     for (int i = 0; i < blocks.size(); i++) {
         if (blocks[i].id == id) {
             block removed = blocks[i];
-            // add dummy for removed real block.
+            // replace removed block with a new dummy
             blocks[i] = block();
             return removed;
         }
@@ -71,13 +72,13 @@ void Bucket::print_bucket() {
 }
 
 bool Bucket::hasSpace() {
-    int not_dummy = 0;
+    int realCount = 0;
     for (const block& b : blocks) {
         if (!b.dummy) {
-            not_dummy++;
+            realCount++;
         }
     }
-    return not_dummy < Z;
+    return realCount < Z;
 }
 
 void Bucket::clear() {
