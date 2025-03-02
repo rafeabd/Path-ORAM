@@ -28,6 +28,13 @@ Client::Client(vector<pair<int,string>> data_to_add, int bucket_capacity, int ma
     this->bucket_capacity = bucket_capacity;
     this->num_trees = ceil(log2(max_range));
 
+    // Initialize stashes and position maps for all trees before processing any data
+    for (int l = 0; l < num_trees; l++) {
+        stashes.push_back(unordered_map<int, block>());
+        position_maps.push_back(map<int, int>());
+        evict_counter.push_back(0);
+    }
+
     //turn input into blocks
     vector<block> blocks_to_add;
     for (pair<int,string> data: data_to_add){
@@ -51,13 +58,7 @@ Client::Client(vector<pair<int,string>> data_to_add, int bucket_capacity, int ma
         int tree_range = 1 << l;
         ORAM* tree = new ORAM(num_buckets, bucket_capacity, key, tree_range);
         oram_trees.push_back(tree);
-        evict_counter.push_back(0);
-        unordered_map<int, block> emptyStash;
-        stashes.push_back(emptyStash);
-        map<int, int> emptyPosMap;
-        position_maps.push_back(emptyPosMap);
 
-        unordered_map<int,block>& stash = stashes[l];
         map<int,int>& position_map = position_maps[l];
         for (block& block_to_add: blocks_to_add){
             if (block_to_add.id % (1<<l) == 0){
@@ -69,7 +70,6 @@ Client::Client(vector<pair<int,string>> data_to_add, int bucket_capacity, int ma
                 return;
             };
         }
-
     }
 }
 
@@ -78,38 +78,78 @@ tuple<vector<block>, int> Client::simple_read_range(int range_power, int id) {
     map<int, int> &position_map = position_maps[range_power];
     ORAM* tree = oram_trees[range_power];
 
+    //cout << "acquired tree materials" << endl;
     pair<int, int> range = {id, id + (1 << range_power)};
     vector<block> result;
 
-    // Return any blocks from stash that fall in [id, id+2^i)
-    for (int addr = range.first; addr < range.second; ++addr) {
-        if (stash.find(addr) != stash.end()) {
-            result.push_back(stash[addr]);
+    //cout << "accessing stash with range [" << range.first << ", " << range.second << ")" << endl;
+    //cout << "stash size: " << stash.size() << endl;
+    
+    // Extremely cautious stash iteration
+    try {
+        // Copy the keys to avoid any potential issues with concurrent modification
+        vector<int> stash_keys;
+        for (const auto& pair : stash) {
+            stash_keys.push_back(pair.first);
         }
+        
+        // Iterate over the copied keys
+        for (int key : stash_keys) {
+            // Validate key is still in stash (in case of concurrent modification)
+            if (stash.find(key) != stash.end()) {
+                // Verify key is in range
+                if (key >= range.first && key < range.second) {
+                    // Add to result
+                    result.push_back(stash[key]);
+                }
+            }
+        }
+    } catch (const exception& e) {
+        cout << "Exception during stash iteration: " << e.what() << endl;
+    } catch (...) {
+        cout << "Unknown exception during stash iteration" << endl;
     }
 
-    // Determine leaf positions p and new p' for the accessed range
-    int p = position_map[range.first];
+    //cout << "accessing position map" << endl;
+    // Check if range.first exists in position_map
+    int p;
+    auto it = position_map.find(range.first);
+    if (it != position_map.end()) {
+        p = it->second;
+    } else {
+        // If range.first isn't in position map, generate a new leaf position
+        p = getRandomLeaf();
+        position_map[range.first] = p;
+    }
+    
     int p_prime = getRandomLeaf();
     position_map[range.first] = p_prime;
 
     // Read all buckets along path p
     for (int j = 0; j < L; j++) {
-        vector<Bucket> levelBuckets = tree->try_buckets_at_level(j, p, range_power);
-        for (Bucket &bucket : levelBuckets) {
-            for (block &b : bucket.getBlocks()) {
-                if (!b.dummy && b.id >= range.first && b.id < range.second) {
-                    // Add block if not already added (avoid duplicates)
-                    auto it = find_if(result.begin(), result.end(), [&](const block &blk) {
-                        return blk.id == b.id;
-                    });
-                    if (it == result.end()) {
-                        result.push_back(b);
+        //cout << "Reading level " << j << " at leaf " << p << endl;
+        try {
+            vector<Bucket> levelBuckets = tree->try_buckets_at_level(j, p, range_power);
+            for (Bucket &bucket : levelBuckets) {
+                for (block &b : bucket.getBlocks()) {
+                    if (!b.dummy && b.id >= range.first && b.id < range.second) {
+                        // Add block if not already added (avoid duplicates)
+                        auto it = find_if(result.begin(), result.end(), [&](const block &blk) {
+                            return blk.id == b.id;
+                        });
+                        if (it == result.end()) {
+                            result.push_back(b);
+                        }
                     }
                 }
             }
+        } catch (const exception& e) {
+            cout << "Exception reading level buckets: " << e.what() << endl;
+        } catch (...) {
+            cout << "Unknown exception reading level buckets" << endl;
         }
     }
+    
     return make_tuple(result, p_prime);
 }
 
@@ -186,114 +226,149 @@ vector<block> Client::simple_access(int id, int range, int op, vector<string> da
     for (int c = 0; c < max_range; c++) {
         if (range > (1 << (c-1)) && range <= (1 << c)) {
             i = c;
+            break;  // Add break to stop after finding correct range
         }
     }
+    
     if (i == -1) {
-        // Range exceeds maximum supported range
+        cerr << "Range " << range << " exceeds maximum supported range" << endl;
         return {};
     }
+    
+    // Sanity check on range_power
+    if (i >= num_trees) {
+        cerr << "Calculated range power " << i << " exceeds number of trees " << num_trees << endl;
+        return {};
+    }
+    
     int a_zero = floor(id / (1 << i)) * (1 << i);
     map<int, block> combined_read;
     vector<block> D;  // output data blocks (for reads)
 
-    //std::cout << "ACCESS: read range" << std::endl;
+    // If reading, pre-initialize D with dummy blocks
+    if (op == 0) {
+        D.resize(range, block());
+    }
+    
+    //std::cout << "Before read range: a_zero=" << a_zero << ", i=" << i << ", range=" << range << std::endl;
     
     // Perform two ReadRange operations for [a0, a0+2^i) and [a0+2^i, a0+2^(i+1))
     for (int a_prime : {a_zero, a_zero + (1 << i)}) {
-        auto [blocks, p_prime] = simple_read_range(i, a_prime);
-        sort(blocks.begin(), blocks.end(), [](const block &a, const block &b) {
-            return a.id < b.id;
-        });
-        // Update path tags for tree i (if writing, these will be new positions)
-        for (block &b : blocks) {
-            //cout << "block being added:" << endl;
-            //b.print_block();
-            if (b.id >= a_prime && b.id < a_prime + (1 << i)) {
-                b.paths[i] = getRandomLeafInRange(p_prime, 1<<i);
-            }
-            // If reading, collect data
-            if (op == 0 && b.id >= id && b.id < id + range) {
-                int idx = b.id - id;
-                if (idx >= 0 && idx < range) {
-                    // Ensure D has size 'range'
-                    if (D.size() < range) D.resize(range);
-                    D[idx] = b;
+        //std::cout << "Processing range starting at " << a_prime << std::endl;
+        
+        try {
+            auto [blocks, p_prime] = simple_read_range(i, a_prime);
+            
+            // Sort blocks by ID for predictable ordering
+            sort(blocks.begin(), blocks.end(), [](const block &a, const block &b) {
+                return a.id < b.id;
+            });
+            
+            // Update path tags for tree i (if writing, these will be new positions)
+            for (block &b : blocks) {
+                if (b.id >= a_prime && b.id < a_prime + (1 << i)) {
+                    b.paths[i] = getRandomLeafInRange(p_prime, 1<<i);
+                }
+                // If reading, collect data
+                if (op == 0 && b.id >= id && b.id < id + range) {
+                    int idx = b.id - id;
+                    if (idx >= 0 && idx < D.size()) {
+                        D[idx] = b;
+                    }
                 }
             }
+            
+            // Merge blocks into combined_read map
+            for (block &b : blocks) {
+                combined_read[b.id] = b;
+            }
         }
-        // Merge blocks into combined_read map
-        for (block &b : blocks) {
-            combined_read[b.id] = b;
+        catch (const exception& e) {
+            cerr << "Exception during simple_read_range for a_prime=" << a_prime << ": " << e.what() << endl;
+        }
+        catch (...) {
+            cerr << "Unknown exception during simple_read_range for a_prime=" << a_prime << endl;
         }
     }
-
-    //std::cout << "ACCESS: writing" << std::endl;
+    
+    //std::cout << "Before write" << endl;
+    
     // If op is WRITE (1), incorporate new data into combined_read
     if (op == 1) {
+        // Check if we have enough data elements
+        if (data.size() < range) {
+            cerr << "Warning: Not enough data elements for the specified range" << endl;
+        }
+        
         // Update existing blocks and add new blocks for any IDs in [id, id+range) not present
         map<int, int> block_index;
         vector<block> combined_blocks;
         combined_blocks.reserve(combined_read.size());
+        
         for (auto &[bid, blk] : combined_read) {
             combined_blocks.push_back(blk);
             block_index[bid] = combined_blocks.size() - 1;
         }
-        for (int j = id; j < id + range; j++) {
+        
+        for (int j = id; j < id + range && j < id + data.size(); j++) {
             auto it = block_index.find(j);
-            combined_blocks[it->second].data = data[j - id];
-            combined_read[j] = combined_blocks[it->second];
+            if (it == block_index.end()) {
+                // Block with this ID doesn't exist yet, create a new one with appropriate paths
+                vector<int> new_paths(num_trees, -1);
+                // Set path for current tree
+                new_paths[i] = getRandomLeafInRange(position_maps[i][a_zero], 1<<i);
+                
+                block newBlock(j, data[j - id], false, new_paths);
+                combined_blocks.push_back(newBlock);
+                block_index[j] = combined_blocks.size() - 1;
+                combined_read[j] = newBlock;
+            } else {
+                // Update existing block
+                combined_blocks[it->second].data = data[j - id];
+                combined_read[j] = combined_blocks[it->second];
+            }
         }
     }
-    //std::cout << "ACCESS: evicting" << std::endl;
+    
+    //std::cout << "Before batch evict" << endl;
+    
     // **Eviction phase:** remove old copies from stash and add updated blocks, then evict
     for (int j = 0; j < num_trees; j++) {
-        unordered_map<int, block> &stash = stashes[j];
-        // Remove any stash blocks in the updated range [a_zero, a_zero + 2^(i+1))
-        for (auto it = stash.begin(); it != stash.end(); ) {
-            if (it->first >= a_zero && it->first < a_zero + (1 << (i+1))) {
-                it = stash.erase(it);
-            } else {
-                ++it;
+        try {
+            unordered_map<int, block> &stash = stashes[j];
+            // Remove any stash blocks in the updated range [a_zero, a_zero + 2^(i+1))
+            for (auto it = stash.begin(); it != stash.end(); ) {
+                if (it->first >= a_zero && it->first < a_zero + (1 << (i+1))) {
+                    it = stash.erase(it);
+                } else {
+                    ++it;
+                }
             }
-        }
-        // Add/overwrite blocks from combined_read to the stash for tree j
-        for (auto &[bid, blk] : combined_read) {
-            stash[bid] = blk;
-        }
-        // Perform batched eviction on tree j
-
-        simple_batch_evict((1 << (i+1)), j);
+            
+            // Add/overwrite blocks from combined_read to the stash for tree j
+            for (auto &[bid, blk] : combined_read) {
+                stash[bid] = blk;
+            }
+            
+            // Perform batched eviction on tree j
+            simple_batch_evict((1 << (i+1)), j);
+            
             // Update eviction counter for this tree
-        int total_leaves = 1 << (L - 1);
-        evict_counter[j] += (1 << (i+1)) % total_leaves;
+            int total_leaves = 1 << (L - 1);
+            evict_counter[j] = (evict_counter[j] + (1 << (i+1))) % total_leaves;
+        }
+        catch (const exception& e) {
+            cerr << "Exception during eviction for tree " << j << ": " << e.what() << endl;
+        }
+        catch (...) {
+            cerr << "Unknown exception during eviction for tree " << j << endl;
+        }
     }
-    //std::cout << "ACCESS: reading" << std::endl;
 
     // If a read operation, return the data for the requested range
-    if (op == 0){
+    if (op == 0) {
         return D;
     }
-
-    /*
-    if (op == 0) {
-        // Already collected in D (ensuring correct order and size)
-        if (range == 1 && !D.empty()) {
-            // Single value read
-            return { block(id, D[0].data, false, {}) };
-        } else {
-            // Return blocks with their data filled (for completeness, we return block structs)
-            vector<block> out;
-            for (int idx = 0; idx < D.size(); ++idx) {
-                block b;
-                b.id = id + idx;
-                b.data = D[idx].data;
-                b.dummy = (D[idx].data.empty());
-                out.push_back(b);
-            }
-            return out;
-        }
-    }
-    */
 
     return {};  // for write, no direct output
 }

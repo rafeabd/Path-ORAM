@@ -11,9 +11,9 @@ using namespace std;
 using namespace std;
 
 int main() {
-    int num_buckets = 1023;
+    int num_buckets = 2047; // must be 2^i-1 where this is closest power of 2 above to the number of blocks you want to support
     int bucket_capacity = 4;
-    int max_range = 15;
+    int max_range = 1025;  //must be 2^i+1 where this is closest power of 2 above to the largest range you want 
 
     cout << "=== ORAM ALGORITHM TESTING ===" << endl;
 
@@ -36,18 +36,20 @@ int main() {
 
     cout << "Reading blocks from oram tree" << endl;
 
-    auto result1 = client.simple_access(26, 8, 0, {});
-    auto result2 = client.simple_access(10, 1, 0, {});
+    auto result1 = client.simple_access(1, 10, 0, {});
+    //auto result2 = client.simple_access(1022, 8, 0, {});
     
-    cout << "read result 1:" << endl;
+    
+    cout << "Read result 1:" << endl;
     for (const auto& blk : result1) {
         cout << "  Block ID: " << blk.id << ", Data: '" << blk.data << "'" << endl;
     }
-
+/*
     cout << "read result 2:" << endl;
     for (const auto& blk : result2) {
         cout << "  Block ID: " << blk.id << ", Data: '" << blk.data << "'" << endl;
     }
+*/
 
     cout << "\n=== All tests completed ===" << endl;
     
