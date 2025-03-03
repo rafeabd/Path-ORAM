@@ -8,9 +8,6 @@
 
 using namespace std;
 
-// Constructor: Initialize ORAM tree with numBuckets buckets,
-// each with capacity bucketCapacity. The encryptionKey and range_length
-// parameters are passed in (encryptionKey is not used in this snippet).
 ORAM::ORAM(int numBuckets, int bucketCapacity, const vector<unsigned char>& encryptionKey, int range_length) {
     this->bucketCapacity = bucketCapacity;
     this->num_buckets = numBuckets;

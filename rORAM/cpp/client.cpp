@@ -20,7 +20,7 @@
 using namespace std;
 
 Client::Client(vector<pair<int,string>> data_to_add, int bucket_capacity, int max_range) {
-    this->key = generateEncryptionKey(32);
+    this->key = generateEncryptionKey(64);
     this->num_blocks = data_to_add.size();
     this->num_buckets = 1 << static_cast<int>(ceil(log2(num_blocks)));
     this->L = ceil(log2(this->num_buckets));
@@ -106,12 +106,12 @@ tuple<vector<block>, int> Client::simple_read_range(int range_power, int id) {
     // Check if range exists in position_map
     int p;
     auto it = position_map.find(range.first);
-    if (it != position_map.end()) {
+    //if (it != position_map.end()) {
         p = it->second;
-    } else {
-        p = getRandomLeaf();
-        position_map[range.first] = p;
-    }
+    //} else {
+    //    p = getRandomLeaf();
+    //    position_map[range.first] = p;
+    //}
     
     int p_prime = getRandomLeaf();
     position_map[range.first] = p_prime;
@@ -137,7 +137,7 @@ tuple<vector<block>, int> Client::simple_read_range(int range_power, int id) {
                                 }
                             }
                         } catch (const exception& e) {
-                            // Skip blocks that fail decryp
+                            // Skip blocks that fail decryp - for debbuggin, shouldn't be necessary right now
                             // cout << "Skipping block that couldn't be decrypted: " << e.what() << endl;
                         }
                     }
@@ -169,7 +169,7 @@ void Client::simple_batch_evict(int eviction_number, int range_power) {
                         // Decrypt the block 
                         block decrypted_blk = decryptBlock(blk, key);
                         
-                        // Only process non-dummy blocks
+                        // Only process non-dummy blocks - bad, need to change.
                         if (!decrypted_blk.dummy) {
                             // Move real block to stash if not already present
                             if (stash.find(decrypted_blk.id) == stash.end()) {
@@ -177,7 +177,6 @@ void Client::simple_batch_evict(int eviction_number, int range_power) {
                             }
                         }
                     } catch (const exception& e) {
-                        // Skip blocks that fail decryption
                         // cout << "Skipping block during eviction: " << e.what() << endl;
                     }
                 }
@@ -229,7 +228,7 @@ void Client::simple_batch_evict(int eviction_number, int range_power) {
             for (const block &blk : newBucket.getBlocks()) {
                 if (blk.dummy) {
                     // For dummy blocks
-                    block encrypted_dummy = encryptBlock(blk, key);
+                    block encrypted_dummy = encryptBlock(blk, key); // don't need to do this now, all blocks will be encrypted the same way, dummy or not
                     encryptedBucket.addBlock(encrypted_dummy);
                 } else {
                     // Encrypt real blocks
@@ -245,7 +244,7 @@ void Client::simple_batch_evict(int eviction_number, int range_power) {
 }
 
 vector<block> Client::simple_access(int id, int range, int op, vector<string> data) {
-    // Determine i such that 2^(i-1) < range <= 2^i
+    // Determine i for 2^(i-1) < range <= 2^i
     int i = -1;
     for (int c = 0; c < max_range; c++) {
         if (range > (1 << (c-1)) && range <= (1 << c)) {
