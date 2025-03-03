@@ -43,7 +43,7 @@ vector<unsigned char> hexDecode(const string &hex) {
     return data;
 }
 
-// Creates an encrypted ID 
+// Creates an encrypted ID (HMAC)
 vector<unsigned char> create_encrypted_id(const vector<unsigned char>& key, const vector<unsigned char>& data, size_t length) {
     vector<unsigned char> output(length);
     unsigned int len = length;
@@ -194,10 +194,11 @@ block deserializeBlock(const string &s) {
         }
     }
     
+    // Parse data
     string data;
     getline(iss, data);
     
-    // Remove padding 
+    // Remove padding spaces
     while (!data.empty() && data.back() == ' ') {
         data.pop_back();
     }
@@ -207,17 +208,11 @@ block deserializeBlock(const string &s) {
 
 // Encrypt the whole block
 block encryptBlock(const block &b, const vector<unsigned char>& key) {
-    // all block data to string
     string plaintext = serializeBlock(b);
     vector<unsigned char> plainVec(plaintext.begin(), plaintext.end());
-    
-    // actual encryption
     vector<unsigned char> cipherVec = encryptData(key, plainVec);
-    
-    // binary to hex conversion
     string cipherHex = hexEncode(cipherVec);
     vector<int> empty_path = {};
-    // Create encrypted block with the same paths
     return block(0, cipherHex, false, empty_path);
 }
 
