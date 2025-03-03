@@ -7,9 +7,8 @@
 using namespace std;
 
 Bucket::Bucket(int capacity) : Z(capacity) {
-    // Initialize bucket with Z dummy blocks
     for (int i = 0; i < Z; i++) {
-        blocks.push_back(block());  // push a dummy block
+        blocks.push_back(block()); 
     }
 }
 
@@ -17,7 +16,6 @@ bool Bucket::addBlock(const block& newBlock) {
     if (!hasSpace()) {
         return false;
     }
-    // Place the new block in the first dummy slot
     for (block& b : blocks) {
         if (b.dummy) {
             b = newBlock;
@@ -28,12 +26,10 @@ bool Bucket::addBlock(const block& newBlock) {
 }
 
 bool Bucket::startaddblock(block& newBlock) {
-    // Add block if not at capacity (used for initial building, if needed)
     if (blocks.size() < Z) {
         blocks.push_back(newBlock);
         return true;
     }
-    // Otherwise, replace a dummy block if one exists
     for (block &b : blocks) {
         if (b.dummy) {
             b = newBlock;
@@ -53,7 +49,6 @@ block Bucket::remove_block(int id) {
     for (int i = 0; i < blocks.size(); i++) {
         if (blocks[i].id == id) {
             block removed = blocks[i];
-            // replace removed block with a new dummy
             blocks[i] = block();
             return removed;
         }

@@ -11,9 +11,9 @@ using namespace std;
 using namespace std;
 
 int main() {
-    int num_buckets = 2047; // must be 2^i-1 where this is closest power of 2 above to the number of blocks you want to support
+    int num_buckets = 31; // must be 2^i-1 where this is closest power of 2 above to the number of blocks you want to support
     int bucket_capacity = 4;
-    int max_range = 1025;  //must be 2^i+1 where this is closest power of 2 above to the largest range you want 
+    int max_range = 17;  //must be 2^i+1 where this is closest power of 2 above to the largest range you want 
 
     cout << "=== ORAM ALGORITHM TESTING ===" << endl;
 
@@ -29,27 +29,29 @@ int main() {
 
     Client client(data_to_add, bucket_capacity, max_range);
 
-    //for (int i = 0; i < client.num_trees; i++){
-    //    client.printLogicalTreeState(i,10);
-    //}
+///*
+    for (int i = 0; i < client.num_trees; i++){
+        client.printLogicalTreeState(i,10);
+    }
     //client.print_position_maps();
-
+///*
     cout << "Reading blocks from oram tree" << endl;
-
-    auto result1 = client.simple_access(1, 10, 0, {});
+///*
+    auto result1 = client.simple_access(1, 4, 0, {});
+    auto result2 = client.simple_access(12, 15, 0, {});
     //auto result2 = client.simple_access(1022, 8, 0, {});
     
-    
+///*
     cout << "Read result 1:" << endl;
     for (const auto& blk : result1) {
         cout << "  Block ID: " << blk.id << ", Data: '" << blk.data << "'" << endl;
     }
-/*
+///*
     cout << "read result 2:" << endl;
     for (const auto& blk : result2) {
         cout << "  Block ID: " << blk.id << ", Data: '" << blk.data << "'" << endl;
     }
-*/
+///*
 
     cout << "\n=== All tests completed ===" << endl;
     
