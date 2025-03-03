@@ -126,8 +126,6 @@ tuple<vector<block>, int> Client::simple_read_range(int range_power, int id) {
                         try {
                             // Decrypt the block 
                             block decrypted_b = decryptBlock(b, key);
-                            
-                            // Only add non-dummy blocks in our range to the result
                             if (!decrypted_b.dummy && decrypted_b.id >= range.first && decrypted_b.id < range.second) {
                                 auto it = find_if(result.begin(), result.end(), [&](const block &blk) {
                                     return blk.id == decrypted_b.id;
@@ -236,8 +234,6 @@ void Client::simple_batch_evict(int eviction_number, int range_power) {
                     encryptedBucket.addBlock(encrypted_blk);
                 }
             }
-            
-            // Write back the encrypted bucket
             tree->updateBucketAtLevel(j, r, encryptedBucket);
         }
     }
