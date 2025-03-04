@@ -8,7 +8,7 @@ using namespace std;
 
 class ORAM {
 private:
-
+    vector<unsigned char> encryptionKey;
     
     int parent(int i);
     int leftChild(int i);
@@ -20,9 +20,7 @@ public:
     int global_counter;
     int num_buckets;
     int range_length;
-    ORAM(int numBuckets, int bucketCapacity, const vector<unsigned char>& encryptionKey, int range_length);
-
-    string serialize_bucket(Bucket bucket);
+    ORAM(int numBuckets, int bucketCapacity, const vector<unsigned char>& encryptionKey, int range_length, string file);
 
 
     int bitReverse(int x, int bits);

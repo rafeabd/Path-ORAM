@@ -56,7 +56,7 @@ Client::Client(vector<pair<int,string>> data_to_add, int bucket_capacity, int ma
 
     for (int l = 0; l < num_trees; l++){
         int tree_range = 1 << l;
-        ORAM* tree = new ORAM(num_buckets, bucket_capacity, key, tree_range);
+        ORAM* tree = new ORAM(num_buckets, bucket_capacity, key, tree_range, "");
         oram_trees.push_back(tree);
 
         map<int,int>& position_map = position_maps[l];
@@ -520,19 +520,19 @@ void Client::printLogicalTreeState(int tree_index, int max_level) {
             // Convert the logical index to its physical location.
             int physical_index = tree->toPhysicalIndex(logical_index);
             // Retrieve the bucket stored at the physical index.
-            Bucket bucket = tree->heap[physical_index];
+            //Bucket bucket = tree->heap[physical_index];
             cout << "  Bucket " << logical_index << " (physical " << physical_index << "): ";
             bool hasBlocks = false;
             // Print out each non-dummy block (e.g. showing id and a short snippet of its data).
-            for (const block &b : bucket.getBlocks()) {
-                if (!b.dummy) {
-                    cout << "Block " << b.id << " ('" << b.data.substr(0, 10) << "') ";
-                    hasBlocks = true;
-                }
-            }
-            if (!hasBlocks) {
-                cout << "[empty]";
-            }
+            //for (const block &b : bucket.getBlocks()) {
+            //    if (!b.dummy) {
+            //        cout << "Block " << b.id << " ('" << b.data.substr(0, 10) << "') ";
+            //        hasBlocks = true;
+            //    }
+            //}
+            //if (!hasBlocks) {
+            //    cout << "[empty]";
+            //}
             cout << endl;
         }
         cout << endl;

@@ -11,6 +11,7 @@
 
 #include "../include/encryption.h"
 #include "../include/block.h"
+#include "../include/bucket.h"
 
 using namespace std;
 
@@ -222,4 +223,16 @@ block decryptBlock(const block &b, const vector<unsigned char>& key) {
     vector<unsigned char> plainVec = decryptData(key, cipherVec);
     string plainText(plainVec.begin(), plainVec.end());
     return deserializeBlock(plainText);
+}
+
+string serialize_bucket(Bucket bucket){
+    ostringstream oss;
+    for (block b : bucket.getBlocks()){
+        oss << b.data;
+    }
+    return oss.str();
+}
+
+Bucket deserialize_bucket(string read_string){
+    vector<block> blocks;
 }
