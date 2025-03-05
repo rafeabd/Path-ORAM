@@ -16,11 +16,10 @@ ORAM::ORAM(int numBuckets, int bucketCapacity, const vector<unsigned char>& encr
     this->num_buckets = numBuckets;
     this->range_length = range_length;
     this->global_counter = 0;
-    this->heap = file;
 
-    ofstream tree_file(heap);
+    file = "trees/" + file;
+    tree_file.open(file, std::ios::in | std::ios::out | std::ios::trunc);
     
-
     for (int i = 0; i < numBuckets; i++) {
         Bucket bucket_to_add;
         for (int i = 0; i < 4; i++){
@@ -29,7 +28,13 @@ ORAM::ORAM(int numBuckets, int bucketCapacity, const vector<unsigned char>& encr
         }
         tree_file << serialize_bucket(bucket_to_add);
     }
-    tree_file.close();
+    tree_file.flush();
+}
+
+ORAM::~ORAM() {
+    if (tree_file.is_open()) {
+        tree_file.close();
+    }
 }
 
 int ORAM::bitReverse(int x, int bits) {
@@ -81,11 +86,6 @@ int ORAM::parent(int i) {
 }
 
 Bucket ORAM::read_bucket(int logical_index) {
-    std::ifstream tree_file(heap, std::ios::binary);
-    if (!tree_file.is_open()) {
-        throw std::runtime_error("Unable to open file: " + std::string(heap));
-    }
-    
     // Calculate the byte offset for the desired node.
     const std::streamoff offset = toPhysicalIndex(logical_index) * 512;
     tree_file.seekg(offset, std::ios::beg);
@@ -94,17 +94,15 @@ Bucket ORAM::read_bucket(int logical_index) {
     }
     char buffer[512];
     tree_file.read(buffer, 512);
+    //cout << "in read bucket" << endl;
+    //cout << tree_file.gcount() << endl;
     if (tree_file.gcount() != 512) {
         throw std::runtime_error("Failed to read the full bucket.");
     }
     string bucket_data(buffer, 512);
-
     Bucket result = deserialize_bucket(bucket_data);
-
-    
     return result;
 }
- //return heap[toPhysicalIndex(logical_index)];
 
 vector<Bucket> ORAM::readBucketsAndClear(int level, int start_index, int count) {
     int levelStart = (1 << level) - 1;
@@ -113,23 +111,42 @@ vector<Bucket> ORAM::readBucketsAndClear(int level, int start_index, int count) 
     for (int t = start_index; t < start_index + count; ++t) {
         indices.insert(t % levelCount);
     }
+    
     vector<Bucket> buckets;
     for (int idx : indices) {
         int normalIndex = levelStart + idx;
         if (normalIndex >= num_buckets) continue;
-        int physicalIndex = toPhysicalIndex(normalIndex);
-        //buckets.push_back(heap[physicalIndex]);
-        //heap[physicalIndex] = Bucket(bucketCapacity);
+        
+        // Read the bucket from disk using its logical index.
+        Bucket b = read_bucket(normalIndex);
+        buckets.push_back(b);
+        
+        // Create an empty bucket. Here we fill it with bucketCapacity dummy blocks.
+        Bucket emptyBucket(bucketCapacity);
+        for (int i = 0; i < bucketCapacity; i++) {
+            block dummy = block(-1, "", true, vector<int>{});
+            emptyBucket.addBlock(encryptBlock(dummy, encryptionKey));
+        }
+        // Write the empty bucket back to disk.
+        updateBucket(normalIndex, emptyBucket);
     }
     return buckets;
 }
 
 void ORAM::updateBucket(int logicalIndex, const Bucket &newBucket) {
-    int physicalIndex = toPhysicalIndex(logicalIndex);
-    if (physicalIndex < 0 || physicalIndex >= heap.size()) {
-        throw std::out_of_range("Invalid bucket index");
+    const std::streamoff offset = toPhysicalIndex(logicalIndex) * 512;
+    tree_file.seekp(offset, std::ios::beg);
+    if (!tree_file) {
+        throw std::runtime_error("Seek failed.");
     }
-    //heap[physicalIndex] = newBucket;
+
+    std::string bucket_data = serialize_bucket(newBucket);
+    tree_file.write(bucket_data.data(), 512);
+
+    if (!tree_file) {
+        throw std::runtime_error("Write failed.");
+    }
+    tree_file.flush();
 }
 
 void ORAM::updateBucketAtLevel(int level, int index_in_level, const Bucket &newBucket) {
@@ -166,7 +183,7 @@ vector<Bucket> ORAM::try_buckets_at_level(int level, int leaf, int range_power) 
     vector<Bucket> result;
     for (int i = 0; i < (1 << range_power); i++) {
         int idx = (physical_index + i) % level_count;
-        //result.push_back(heap[level_start + idx]);
+        result.push_back(read_bucket(level_start+idx));
     }
     return result;
 }
@@ -182,12 +199,30 @@ vector<int> ORAM::getpathindicies_ltor(int leaf) {
     return path_indices;
 }
 
-block ORAM::writeBlockToPath(const block &b, int logicalLeaf) {
+block ORAM::writeBlockToPath(const block &b, int logicalLeaf, vector<unsigned char> key) {
     vector<int> path_indices = getpathindicies_ltor(logicalLeaf);
-    for (int bucketIndex : path_indices) {
-        //if (heap[bucketIndex].addBlock(b)) {
-        //    return block();
-        //}
+    for (int physIndex : path_indices) {
+        // Convert the physical index back to its logical index.
+        int logicalIndex = toNormalIndex(physIndex);
+        Bucket currentBucket = read_bucket(logicalIndex);
+
+        //we need to decrypt the bucket because otherwise all blocks will look real.
+
+        for (block &blocks_in_bucket: currentBucket.blocks){
+            blocks_in_bucket = decryptBlock(blocks_in_bucket, key);
+        }
+        // Encrypt the block before inserting.
+        if (currentBucket.addBlock(b)) {
+            for (block &blocks_in_bucket: currentBucket.blocks){
+                blocks_in_bucket = encryptBlock(blocks_in_bucket, key);
+            }
+            updateBucket(logicalIndex, currentBucket);
+            // Return an empty (dummy) block to indicate that the write was successful.
+            return block(-1, "", true, vector<int>{});
+        }
     }
+    // If the block could not be written to any bucket along the path,
+    // return it so it can be kept in the stash.
     return b;
 }
+

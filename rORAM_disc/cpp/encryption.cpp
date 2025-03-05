@@ -116,6 +116,17 @@ vector<unsigned char> decryptData(const vector<unsigned char>& key, const vector
     }
     
     // Extract IV
+
+    /*
+    // creating stringstream object
+    stringstream ss;
+    // Insert every character of vector into stream
+    for (auto it = ciphertext.begin(); it != ciphertext.end(); it++)
+        ss << *it;
+
+    // converts stream contents into a string
+    cout << ss.str() << endl;
+    */
     vector<unsigned char> iv(ciphertext.begin(), ciphertext.begin() + iv_length);
     
     EVP_CIPHER_CTX* ctx = EVP_CIPHER_CTX_new();
@@ -234,5 +245,24 @@ string serialize_bucket(Bucket bucket){
 }
 
 Bucket deserialize_bucket(string read_string){
+    const size_t blockSize = 128;
+    const size_t expectedSize = 512;
+    
+    // Check that the input string is the expected size.
+    if (read_string.size() != expectedSize) {
+        throw runtime_error("Bucket data must be exactly 512 characters.");
+    }
+    
     vector<block> blocks;
+    // Loop over the string in increments of 128.
+    for (size_t i = 0; i < expectedSize; i += blockSize) {
+        string blockStr = read_string.substr(i, blockSize);
+        block block_being_deserialized = block(0,blockStr,false,vector<int>{});
+        blocks.push_back(block_being_deserialized);
+    }
+    Bucket result = Bucket();
+    for (block b: blocks){
+        result.addBlock(b);
+    }
+    return result;
 }

@@ -2,6 +2,7 @@
 #define ORAM_H
 
 #include <vector>
+#include <fstream>
 #include "bucket.h"
 
 using namespace std;
@@ -14,7 +15,8 @@ private:
     int leftChild(int i);
     int rightChild(int i);
 public:
-    string heap;
+    ~ORAM();
+    fstream tree_file;
     int bucketCapacity;
     
     int global_counter;
@@ -47,7 +49,7 @@ public:
     void simple_update_bucket(int level, int inx_in_level, Bucket updated_bucket);
 
     int simple_toPhysical(int index, int level);
-    block writeBlockToPath(const block &b, int logicalLeaf);
+    block writeBlockToPath(const block &b, int logicalLeaf, vector<unsigned char> key);
 
     vector<Bucket> try_buckets_at_level(int level, int leaf, int range_power);
 };

@@ -4,6 +4,8 @@ using namespace std;
 #include <string>
 #include <vector>
 #include <cassert>
+#include <unordered_set>
+#include <cmath>
 #include "../include/client.h"
 #include "../include/server.h"
 #include "../include/oram.h"
@@ -11,48 +13,108 @@ using namespace std;
 using namespace std;
 
 int main() {
-    int num_buckets = 31; // must be 2^i-1 where this is closest power of 2 above to the number of blocks you want to support
+    // Number of blocks to test
+    int num_blocks = 10000;
+    
+    // Query range parameters
+    int query_range = 10000;  // Default range size for queries
+    
+    // Calculate appropriate ORAM parameters
+    // Buckets should be 2^i-1 where i makes it larger than num_blocks
+    int power = 1;
+    while ((1 << power) - 1 < num_blocks) {
+        power++;
+    }
+    int num_buckets = (1 << power) - 1;
+    
+    // Other parameters
     int bucket_capacity = 4;
-    int max_range = 17;  //must be 2^i+1 where this is closest power of 2 above to the largest range you want 
+    int max_range = (1 << power) + 1;  // 2^i+1 where i is the power used for buckets
 
     cout << "=== ORAM ALGORITHM TESTING ===" << endl;
-
-    cout << "Initializing client with at least" << num_buckets << " buckets" << " of size "
+    cout << "Testing with " << num_blocks << " blocks" << endl;
+    cout << "Query range size: " << query_range << endl;
+    cout << "Initializing client with " << num_buckets << " buckets of size "
          << bucket_capacity << ", max range " << max_range << endl;
     
-    //make data
-    vector<pair<int,string>> data_to_add;
-    for (int i = 0; i < 120; i++) {
+    // Create test data
+    vector<pair<int, string>> data_to_add;
+    for (int i = 0; i < num_blocks; i++) {
         string data = "Test " + to_string(i);
-        data_to_add.push_back(make_pair(i,data));
+        data_to_add.push_back(make_pair(i, data));
     }
 
+    // Initialize client with the data
     Client client(data_to_add, bucket_capacity, max_range);
-
-///*
-    for (int i = 0; i < client.num_trees; i++){
-        client.printLogicalTreeState(i,10);
-    }
-    //client.print_position_maps();
-///*
-    cout << "Reading blocks from oram tree" << endl;
-////*
-    auto result1 = client.simple_access(1, 4, 0, {});
-    auto result2 = client.simple_access(90, 4, 0, {});
-    //auto result2 = client.simple_access(1022, 8, 0, {});
     
-///*
-    cout << "Read result 1:" << endl;
-    for (const auto& blk : result1) {
-        cout << "  Block ID: " << blk.id << ", Data: '" << blk.data << "'" << endl;
+    //cout << "Initial state of logical trees:" << endl;
+    //for (int i = 0; i < client.num_trees; i++) {
+    //    client.printLogicalTreeState(i, 10); // Print first 10 elements of each tree
+    //}
+    
+    cout << "\nAccessing blocks by range to verify data integrity..." << endl;
+    
+    // Calculate how many range queries we need
+    int num_range_queries = ceil((double)num_blocks / query_range);
+    
+    // Track successful retrievals
+    int successful_retrievals = 0;
+    unordered_set<int> accessed_ids;
+    
+    // Access blocks by ranges
+    for (int range_idx = 0; range_idx < num_range_queries; range_idx++) {
+        int start_id = range_idx * query_range;
+        
+        cout << "  Querying range starting at block " << start_id 
+             << " (range size: " << query_range << ")" << endl;
+             
+        auto result = client.simple_access(start_id, query_range, 0, {});
+        
+        // Check each block in the result
+        cout << "  Retrieved " << result.size() << " blocks in this range" << endl;
+        
+        for (const auto& blk : result) {
+            int id = blk.id;
+            
+            // Check if this is a valid block ID we care about
+            if (id >= 0 && id < num_blocks) {
+                string expected_data = "Test " + to_string(id);
+                
+                if (blk.data == expected_data) {
+                    successful_retrievals++;
+                    accessed_ids.insert(id);
+                    //cout << "    Block ID " << id << ": Data correct" << endl;
+                } else {
+                    cout << "    ERROR: Block ID " << id << " has incorrect data. Expected: '" 
+                         << expected_data << "', Got: '" << blk.data << "'" << endl;
+                }
+            }
+        }
+        
+        // Print progress
+        cout << "  Progress: " << min((range_idx + 1) * query_range, num_blocks) << "/" << num_blocks 
+             << " blocks processed, " << successful_retrievals << " successful" << endl;
+        cout << endl;
     }
-///*
-    cout << "read result 2:" << endl;
-    for (const auto& blk : result2) {
-        cout << "  Block ID: " << blk.id << ", Data: '" << blk.data << "'" << endl;
+    
+    // Print final results
+    cout << "\nRetrieval results:" << endl;
+    cout << "  Total blocks: " << num_blocks << endl;
+    cout << "  Successfully retrieved: " << successful_retrievals << endl;
+    cout << "  Success rate: " << (double)successful_retrievals / num_blocks * 100 << "%" << endl;
+    
+    // Check if any blocks were missed
+    if (successful_retrievals < num_blocks) {
+        cout << "\nMissing blocks:" << endl;
+        for (int i = 0; i < num_blocks; i++) {
+            if (accessed_ids.find(i) == accessed_ids.end()) {
+                cout << "  Block ID: " << i << endl;
+            }
+        }
+    } else {
+        cout << "\nAll blocks were successfully retrieved!" << endl;
     }
-//*/
-
+    
     cout << "\n=== All tests completed ===" << endl;
     
     return 0;

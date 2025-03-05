@@ -56,22 +56,24 @@ Client::Client(vector<pair<int,string>> data_to_add, int bucket_capacity, int ma
 
     for (int l = 0; l < num_trees; l++){
         int tree_range = 1 << l;
-        ORAM* tree = new ORAM(num_buckets, bucket_capacity, key, tree_range, "");
+        ORAM* tree = new ORAM(num_buckets, bucket_capacity, key, tree_range, to_string(l));
         oram_trees.push_back(tree);
 
+        //cout << "adding" << endl;
         map<int,int>& position_map = position_maps[l];
         for (block& block_to_add: blocks_to_add){
             if (block_to_add.id % (1<<l) == 0){
                 position_map[block_to_add.id] = block_to_add.paths[l];
             }
             // Encrypt the block before writing it to the tree
-            block encrypted_block = encryptBlock(block_to_add, key);
-            block add_test_block = tree->writeBlockToPath(encrypted_block, block_to_add.paths[l]);
+            //block encrypted_block = encryptBlock(block_to_add, key);
+            block add_test_block = tree->writeBlockToPath(block_to_add, block_to_add.paths[l],key);
             if (!add_test_block.dummy){
                 cerr<< "block failed to add in initialization" << endl;
                 return;
             };
         }
+        //cout << "done adding" << endl;
     }
 }
 
@@ -119,13 +121,16 @@ tuple<vector<block>, int> Client::simple_read_range(int range_power, int id) {
     // Read all buckets along path p
     for (int j = 0; j < L; j++) {
         try {
+            cout << "try buckets" << endl;
             vector<Bucket> levelBuckets = tree->try_buckets_at_level(j, p, range_power);
+            cout << "done trying buckets" << endl;
             for (Bucket &bucket : levelBuckets) {
                 for (block &b : bucket.getBlocks()) {
                     if (!b.data.empty()) {
                         try {
                             // Decrypt the block 
                             block decrypted_b = decryptBlock(b, key);
+                            decrypted_b.print_block();
                             
                             // Only add non-dummy blocks in our range to the result
                             if (!decrypted_b.dummy && decrypted_b.id >= range.first && decrypted_b.id < range.second) {
@@ -273,7 +278,7 @@ vector<block> Client::simple_access(int id, int range, int op, vector<string> da
     }
     
     //std::cout << "Before read range: a_zero=" << a_zero << ", i=" << i << ", range=" << range << std::endl;
-    
+    std::cout << "reading range" << endl;
     // two read range
     for (int a_prime : {a_zero, a_zero + (1 << i)}) {
         //std::cout << "Processing range starting at " << a_prime << std::endl;
@@ -313,7 +318,7 @@ vector<block> Client::simple_access(int id, int range, int op, vector<string> da
         }
     }
     
-    //std::cout << "Before write" << endl;
+    std::cout << "Before write" << endl;
     
     // writing update
     if (op == 1) {
@@ -338,7 +343,7 @@ vector<block> Client::simple_access(int id, int range, int op, vector<string> da
         }
     }
     
-    //std::cout << "Before batch evict" << endl;
+    std::cout << "Before batch evict" << endl;
     
     // evict
     for (int j = 0; j < num_trees; j++) {
