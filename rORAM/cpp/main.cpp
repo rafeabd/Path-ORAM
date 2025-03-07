@@ -17,7 +17,7 @@ int main() {
     int num_blocks = 10000;
     
     // Query range parameters
-    int query_range = 10000;  // Default range size for queries
+    int query_range = 1000;  // Default range size for queries
     
     // Calculate appropriate ORAM parameters
     // Buckets should be 2^i-1 where i makes it larger than num_blocks

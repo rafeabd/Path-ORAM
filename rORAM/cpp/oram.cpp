@@ -68,6 +68,7 @@ int ORAM::parent(int i) {
 }
 
 Bucket ORAM::read_bucket(int logical_index) {
+    cout << "logical index" << endl;
     return heap[toPhysicalIndex(logical_index)];
 }
 

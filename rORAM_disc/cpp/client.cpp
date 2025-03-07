@@ -22,7 +22,8 @@ using namespace std;
 Client::Client(vector<pair<int,string>> data_to_add, int bucket_capacity, int max_range) {
     this->key = generateEncryptionKey(64);
     this->num_blocks = data_to_add.size();
-    this->num_buckets = 1 << static_cast<int>(ceil(log2(num_blocks)));
+    //this->num_buckets = 1 << static_cast<int>(ceil(log2(num_blocks)));
+    this->num_buckets = 1 << static_cast<int>(ceil(log2(num_blocks/4)));
     this->L = ceil(log2(this->num_buckets));
     this->max_range = max_range;
     this->bucket_capacity = bucket_capacity;
@@ -65,8 +66,6 @@ Client::Client(vector<pair<int,string>> data_to_add, int bucket_capacity, int ma
             if (block_to_add.id % (1<<l) == 0){
                 position_map[block_to_add.id] = block_to_add.paths[l];
             }
-            // Encrypt the block before writing it to the tree
-            //block encrypted_block = encryptBlock(block_to_add, key);
             block add_test_block = tree->writeBlockToPath(block_to_add, block_to_add.paths[l],key);
             if (!add_test_block.dummy){
                 cerr<< "block failed to add in initialization" << endl;
@@ -118,19 +117,20 @@ tuple<vector<block>, int> Client::simple_read_range(int range_power, int id) {
     int p_prime = getRandomLeaf();
     position_map[range.first] = p_prime;
 
+    //cout << "reading leaf: " << p << "for range power: " << range_power << endl;
     // Read all buckets along path p
     for (int j = 0; j < L; j++) {
         try {
-            cout << "try buckets" << endl;
+            
             vector<Bucket> levelBuckets = tree->try_buckets_at_level(j, p, range_power);
-            cout << "done trying buckets" << endl;
             for (Bucket &bucket : levelBuckets) {
                 for (block &b : bucket.getBlocks()) {
                     if (!b.data.empty()) {
                         try {
                             // Decrypt the block 
                             block decrypted_b = decryptBlock(b, key);
-                            decrypted_b.print_block();
+                            //cout << "decrypted block" << endl;
+                            //decrypted_b.print_block();
                             
                             // Only add non-dummy blocks in our range to the result
                             if (!decrypted_b.dummy && decrypted_b.id >= range.first && decrypted_b.id < range.second) {
@@ -230,7 +230,7 @@ void Client::simple_batch_evict(int eviction_number, int range_power) {
             
             // encrypt bucket
             Bucket encryptedBucket(bucket_capacity);
-            for (const block &blk : newBucket.getBlocks()) {
+            for (block &blk : newBucket.getBlocks()) {
                 if (blk.dummy) {
                     // For dummy blocks
                     block encrypted_dummy = encryptBlock(blk, key); // don't need to do this now, all blocks will be encrypted the same way, dummy or not
@@ -278,7 +278,7 @@ vector<block> Client::simple_access(int id, int range, int op, vector<string> da
     }
     
     //std::cout << "Before read range: a_zero=" << a_zero << ", i=" << i << ", range=" << range << std::endl;
-    std::cout << "reading range" << endl;
+    //std::cout << "reading range" << endl;
     // two read range
     for (int a_prime : {a_zero, a_zero + (1 << i)}) {
         //std::cout << "Processing range starting at " << a_prime << std::endl;
@@ -318,7 +318,7 @@ vector<block> Client::simple_access(int id, int range, int op, vector<string> da
         }
     }
     
-    std::cout << "Before write" << endl;
+    //std::cout << "Before write" << endl;
     
     // writing update
     if (op == 1) {
@@ -343,7 +343,7 @@ vector<block> Client::simple_access(int id, int range, int op, vector<string> da
         }
     }
     
-    std::cout << "Before batch evict" << endl;
+    //std::cout << "Before batch evict" << endl;
     
     // evict
     for (int j = 0; j < num_trees; j++) {
@@ -483,6 +483,7 @@ void Client::print_tree_state(int tree_index, int max_level) {
             cout << "  Bucket " << i << " (physical): ";
             // Convert to normal index to read logically
             int normal_idx = tree->toNormalIndex(i);
+            int physical_index = toPhysicalIndex(normal_idx);
             Bucket bucket = tree->read_bucket(normal_idx);
             bool has_blocks = false;
             for (const block& b : bucket.getBlocks()) {
@@ -523,21 +524,26 @@ void Client::printLogicalTreeState(int tree_index, int max_level) {
         // For each logical index at this level, convert it to physical index.
         for (int logical_index = level_start; logical_index < level_end; logical_index++) {
             // Convert the logical index to its physical location.
-            int physical_index = tree->toPhysicalIndex(logical_index);
             // Retrieve the bucket stored at the physical index.
-            //Bucket bucket = tree->heap[physical_index];
-            cout << "  Bucket " << logical_index << " (physical " << physical_index << "): ";
+            int physical_index = toPhysicalIndex(logical_index);
+            Bucket bucket = tree->read_bucket(logical_index);
+
+            cout << "  Bucket " << logical_index << " (physical index) " << physical_index<< "): ";
             bool hasBlocks = false;
             // Print out each non-dummy block (e.g. showing id and a short snippet of its data).
-            //for (const block &b : bucket.getBlocks()) {
-            //    if (!b.dummy) {
-            //        cout << "Block " << b.id << " ('" << b.data.substr(0, 10) << "') ";
-            //        hasBlocks = true;
-            //    }
-            //}
-            //if (!hasBlocks) {
-            //    cout << "[empty]";
-            //}
+            for (block &b : bucket.getBlocks()) {
+                b = decryptBlock(b,key);
+                if (!b.dummy) {
+                    cout << " Block " << b.id << " ('" << b.data.substr(0, 10) << "') ";
+                    for (size_t j = 0; j < b.paths.size(); j++) {
+                        cout << b.paths[j];
+                    }
+                    hasBlocks = true;
+                }
+            }
+            if (!hasBlocks) {
+                cout << "[empty]";
+            }
             cout << endl;
         }
         cout << endl;

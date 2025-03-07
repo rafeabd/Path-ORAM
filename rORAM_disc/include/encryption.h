@@ -24,13 +24,13 @@ vector<unsigned char> decryptData(
 
 string hexEncode(const vector<unsigned char>& data);
 vector<unsigned char> hexDecode(const string &hex);
-string serializeBlock(const block &b);
+string serializeBlock(block &b);
 block deserializeBlock(const string &s);
 
 string serialize_bucket(Bucket bucket);
 Bucket deserialize_bucket(string read_string);
 
-block encryptBlock(const block &b, const vector<unsigned char>& key);
+block encryptBlock(block &b, const vector<unsigned char>& key);
 block decryptBlock(const block &b, const vector<unsigned char>& key);
 
 #endif

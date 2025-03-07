@@ -10,6 +10,8 @@
 
 using namespace std;
 
+#define bucket_char_size 1280
+
 ORAM::ORAM(int numBuckets, int bucketCapacity, const vector<unsigned char>& encryptionKey, int range_length, string file) {
     this->encryptionKey = encryptionKey;
     this->bucketCapacity = bucketCapacity;
@@ -18,12 +20,12 @@ ORAM::ORAM(int numBuckets, int bucketCapacity, const vector<unsigned char>& encr
     this->global_counter = 0;
 
     file = "trees/" + file;
-    tree_file.open(file, std::ios::in | std::ios::out | std::ios::trunc);
+    this->tree_file.open(file, std::ios::in | std::ios::out | std::ios::trunc);
     
     for (int i = 0; i < numBuckets; i++) {
         Bucket bucket_to_add;
-        for (int i = 0; i < 4; i++){
-            block block_to_add = block(-1,"",true,vector<int> {});
+        for (int j = 0; j < 4; j++){
+            block block_to_add = block();
             bucket_to_add.addBlock(encryptBlock(block_to_add,encryptionKey));
         }
         tree_file << serialize_bucket(bucket_to_add);
@@ -87,19 +89,20 @@ int ORAM::parent(int i) {
 
 Bucket ORAM::read_bucket(int logical_index) {
     // Calculate the byte offset for the desired node.
-    const std::streamoff offset = toPhysicalIndex(logical_index) * 512;
+    //cout << "logical index in read_bucket" << logical_index << endl;
+    const std::streamoff offset = toPhysicalIndex(logical_index) * bucket_char_size;
     tree_file.seekg(offset, std::ios::beg);
     if (!tree_file) {
         throw std::runtime_error("Seek failed.");
     }
-    char buffer[512];
-    tree_file.read(buffer, 512);
+    char buffer[bucket_char_size];
+    tree_file.read(buffer, bucket_char_size);
     //cout << "in read bucket" << endl;
     //cout << tree_file.gcount() << endl;
-    if (tree_file.gcount() != 512) {
+    if (tree_file.gcount() != bucket_char_size) {
         throw std::runtime_error("Failed to read the full bucket.");
     }
-    string bucket_data(buffer, 512);
+    string bucket_data(buffer, bucket_char_size);
     Bucket result = deserialize_bucket(bucket_data);
     return result;
 }
@@ -124,24 +127,25 @@ vector<Bucket> ORAM::readBucketsAndClear(int level, int start_index, int count) 
         // Create an empty bucket. Here we fill it with bucketCapacity dummy blocks.
         Bucket emptyBucket(bucketCapacity);
         for (int i = 0; i < bucketCapacity; i++) {
-            block dummy = block(-1, "", true, vector<int>{});
+            block dummy = block();
             emptyBucket.addBlock(encryptBlock(dummy, encryptionKey));
         }
         // Write the empty bucket back to disk.
         updateBucket(normalIndex, emptyBucket);
+        
     }
     return buckets;
 }
 
 void ORAM::updateBucket(int logicalIndex, const Bucket &newBucket) {
-    const std::streamoff offset = toPhysicalIndex(logicalIndex) * 512;
+    const std::streamoff offset = toPhysicalIndex(logicalIndex) * bucket_char_size;
     tree_file.seekp(offset, std::ios::beg);
     if (!tree_file) {
         throw std::runtime_error("Seek failed.");
     }
 
     std::string bucket_data = serialize_bucket(newBucket);
-    tree_file.write(bucket_data.data(), 512);
+    tree_file.write(bucket_data.data(), bucket_char_size);
 
     if (!tree_file) {
         throw std::runtime_error("Write failed.");
@@ -203,8 +207,9 @@ block ORAM::writeBlockToPath(const block &b, int logicalLeaf, vector<unsigned ch
     vector<int> path_indices = getpathindicies_ltor(logicalLeaf);
     for (int physIndex : path_indices) {
         // Convert the physical index back to its logical index.
-        int logicalIndex = toNormalIndex(physIndex);
-        Bucket currentBucket = read_bucket(logicalIndex);
+        //int logicalIndex = toNormalIndex(physIndex);
+        //Bucket currentBucket = read_bucket(logicalIndex);
+        Bucket currentBucket = read_bucket(physIndex);
 
         //we need to decrypt the bucket because otherwise all blocks will look real.
 
@@ -216,7 +221,8 @@ block ORAM::writeBlockToPath(const block &b, int logicalLeaf, vector<unsigned ch
             for (block &blocks_in_bucket: currentBucket.blocks){
                 blocks_in_bucket = encryptBlock(blocks_in_bucket, key);
             }
-            updateBucket(logicalIndex, currentBucket);
+            //updateBucket(logicalIndex, currentBucket);
+            updateBucket(physIndex,currentBucket);
             // Return an empty (dummy) block to indicate that the write was successful.
             return block(-1, "", true, vector<int>{});
         }
@@ -225,4 +231,3 @@ block ORAM::writeBlockToPath(const block &b, int logicalLeaf, vector<unsigned ch
     // return it so it can be kept in the stash.
     return b;
 }
-
