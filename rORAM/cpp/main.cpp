@@ -14,10 +14,10 @@ using namespace std;
 
 int main() {
     // Number of blocks to test
-    int num_blocks = 1000;
+    int num_blocks = 100;
     
     // Query range parameters
-    int query_range = 100;  // Default range size for queries
+    int query_range = 10;  // Default range size for queries
     
     // Calculate appropriate ORAM parameters
     // Buckets should be 2^i-1 where i makes it larger than num_blocks
@@ -47,10 +47,10 @@ int main() {
     // Initialize client with the data
     Client client(data_to_add, bucket_capacity, max_range);
     
-    //cout << "Initial state of logical trees:" << endl;
-    //for (int i = 0; i < client.num_trees; i++) {
-    //    client.printLogicalTreeState(i, 10); // Print first 10 elements of each tree
-    //}
+    cout << "Initial state of logical trees:" << endl;
+    for (int i = 0; i < client.num_trees; i++) {
+        client.printLogicalTreeState(i, 10); // Print first 10 elements of each tree
+    }
     
     cout << "\nAccessing blocks by range to verify data integrity..." << endl;
     

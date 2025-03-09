@@ -231,3 +231,4 @@ block ORAM::writeBlockToPath(const block &b, int logicalLeaf, vector<unsigned ch
     // return it so it can be kept in the stash.
     return b;
 }
+

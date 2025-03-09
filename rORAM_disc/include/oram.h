@@ -50,8 +50,11 @@ public:
 
     int simple_toPhysical(int index, int level);
     block writeBlockToPath(const block &b, int logicalLeaf, vector<unsigned char> key);
-
     vector<Bucket> try_buckets_at_level(int level, int leaf, int range_power);
+
+    Bucket read_bucket_physical(int physicalIndex);
+
+    void updateBucket_physical(int physicalIndex, const Bucket &newBucket);
 };
 
 #endif

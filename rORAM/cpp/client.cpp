@@ -66,10 +66,11 @@ Client::Client(vector<pair<int,string>> data_to_add, int bucket_capacity, int ma
                 position_map[block_to_add.id] = block_to_add.paths[l];
             }
             // Encrypt the block before writing it to the tree
-            block encrypted_block = encryptBlock(block_to_add, key);
+            //block encrypted_block = encryptBlock(block_to_add, key);
+            block encrypted_block = block_to_add;
             block add_test_block = tree->writeBlockToPath(encrypted_block, block_to_add.paths[l]);
             if (!add_test_block.dummy){
-                cerr<< "block failed to add in initialization" << endl;
+                cerr << "block failed to add in initialization" << endl;
                 return;
             };
         }
@@ -77,6 +78,7 @@ Client::Client(vector<pair<int,string>> data_to_add, int bucket_capacity, int ma
 }
 
 tuple<vector<block>, int> Client::simple_read_range(int range_power, int id) {
+    //cout << "starting read" << endl;
     unordered_map<int, block> &stash = stashes[range_power];
     map<int, int> &position_map = position_maps[range_power];
     ORAM* tree = oram_trees[range_power];
@@ -120,13 +122,20 @@ tuple<vector<block>, int> Client::simple_read_range(int range_power, int id) {
     // Read all buckets along path p
     for (int j = 0; j < L; j++) {
         try {
+            //cout << "trying" << endl;
             vector<Bucket> levelBuckets = tree->try_buckets_at_level(j, p, range_power);
+            //cout << "done trying" << endl;
             for (Bucket &bucket : levelBuckets) {
+                //cout << "accessing levelbuckets blocks" << endl;
                 for (block &b : bucket.getBlocks()) {
                     if (!b.data.empty()) {
                         try {
                             // Decrypt the block 
+                            //cout << "decrypting" << endl;
+
                             block decrypted_b = decryptBlock(b, key);
+                            //cout << "all decrypted blocks: ";
+                            //decrypted_b.print_block();
                             if (!decrypted_b.dummy && decrypted_b.id >= range.first && decrypted_b.id < range.second) {
                                 auto it = find_if(result.begin(), result.end(), [&](const block &blk) {
                                     return blk.id == decrypted_b.id;
@@ -134,6 +143,7 @@ tuple<vector<block>, int> Client::simple_read_range(int range_power, int id) {
                                 if (it == result.end()) {
                                     result.push_back(decrypted_b);
                                 }
+                            //cout << "done encrypting" << endl;
                             }
                         } catch (const exception& e) {
                             // Skip blocks that fail decryp - for debbuggin, shouldn't be necessary right now
@@ -148,6 +158,18 @@ tuple<vector<block>, int> Client::simple_read_range(int range_power, int id) {
             cout << "Unknown exception reading level buckets" << endl;
         }
     }
+
+    //cout << "blocks from read range" << endl;
+    //for (block b: result){
+    //    b.print_block();
+    //}
+
+
+
+
+    //cout << "done reading in function" << endl;
+
+
     
     return make_tuple(result, p_prime);
 }
@@ -270,7 +292,7 @@ vector<block> Client::simple_access(int id, int range, int op, vector<string> da
     }
     
     //std::cout << "Before read range: a_zero=" << a_zero << ", i=" << i << ", range=" << range << std::endl;
-    
+    //std::cout << "reading" << endl;
     // two read range
     for (int a_prime : {a_zero, a_zero + (1 << i)}) {
         //std::cout << "Processing range starting at " << a_prime << std::endl;
@@ -286,7 +308,9 @@ vector<block> Client::simple_access(int id, int range, int op, vector<string> da
             // Update path tags for tree i
             for (block &b : blocks) {
                 if (b.id >= a_prime && b.id < a_prime + (1 << i)) {
+                    //cout << "leaf range start" << endl;
                     b.paths[i] = getRandomLeafInRange(p_prime, 1<<i);
+                    //cout << "leaf range end" << endl;
                 }
                 // If reading, get data into D
                 if (op == 0 && b.id >= id && b.id < id + range) {
@@ -395,10 +419,11 @@ int Client::getRandomLeafInRange(int start, int range_size) {
     unsigned int random_value;
     memcpy(&random_value, buf, sizeof(random_value));
     
+    //cout << "calculating height and leaf" << endl;
     // Calculate the height and leaf level
     int height = ceil(log2(num_buckets + 1)) - 1;
     int leaf_level = height - 1;
-    
+    //cout << "bit reverse" << endl;
     // bit reverse
     int start_br = 0;
     int temp_start = start;
@@ -407,9 +432,11 @@ int Client::getRandomLeafInRange(int start, int range_size) {
         temp_start >>= 1;
     }
     
+    //cout << "adding offset" << endl;
     // Add a random offset within range_size to the bit-reversed leaf
     int new_leaf_br = (start_br + (random_value % range_size)) % (1 << leaf_level);
     
+    //cout << "bit reverse2" << endl;
     // Bit-reverse back to get the regular leaf index
     int new_leaf = 0;
     int temp_new = new_leaf_br;
@@ -417,6 +444,7 @@ int Client::getRandomLeafInRange(int start, int range_size) {
         new_leaf = (new_leaf << 1) | (temp_new & 1);
         temp_new >>= 1;
     }
+    //cout << "returning" << endl;
     
     return new_leaf;
 }
@@ -522,10 +550,10 @@ void Client::printLogicalTreeState(int tree_index, int max_level) {
             bool hasBlocks = false;
             // Print out each non-dummy block (e.g. showing id and a short snippet of its data).
             for (const block &b : bucket.getBlocks()) {
-                if (!b.dummy) {
+                //if (!b.dummy) {
                     cout << "Block " << b.id << " ('" << b.data.substr(0, 10) << "') ";
                     hasBlocks = true;
-                }
+                //}
             }
             if (!hasBlocks) {
                 cout << "[empty]";

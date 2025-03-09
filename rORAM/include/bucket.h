@@ -16,6 +16,7 @@ private:
 public:
     explicit Bucket(int capacity = 4);
     bool addBlock(const block& block);
+    bool add_block_in_tree(const block& newBlock, const vector<unsigned char>& key);
     vector<block> removeAllBlocks();
     block remove_block(int);
     vector<block>& getBlocks();

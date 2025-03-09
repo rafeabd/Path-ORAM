@@ -14,10 +14,10 @@ using namespace std;
 
 int main() {
     // Number of blocks to test
-    int num_blocks = 100;
+    int num_blocks = 1000;
     
     // Query range parameters
-    int query_range = 1;  // Default range size for queries
+    int query_range = 10;  // Default range size for queries
     
     // Calculate appropriate ORAM parameters
     // Buckets should be 2^i-1 where i makes it larger than num_blocks
@@ -73,8 +73,10 @@ int main() {
         // Check each block in the result
         cout << "  Retrieved " << result.size() << " blocks in this range" << endl;
         
-        for (const auto& blk : result) {
+        for (auto& blk : result) {
             int id = blk.id;
+            //cout << "block retrieved: ";
+            //blk.print_block();
             
             // Check if this is a valid block ID we care about
             if (id >= 0 && id < num_blocks) {

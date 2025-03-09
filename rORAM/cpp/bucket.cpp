@@ -1,5 +1,6 @@
 #include "../include/bucket.h"
 #include "../include/block.h"
+#include "../include/encryption.h"
 
 #include <iostream>
 #include <vector>
@@ -23,6 +24,19 @@ bool Bucket::addBlock(const block& newBlock) {
         }
     }
     return false;
+}
+
+bool Bucket::add_block_in_tree(const block& newBlock, const vector<unsigned char>& key) {
+    
+    Bucket decrypted_bucket = decrypt_bucket(*this, key);
+    
+    if (!decrypted_bucket.addBlock(newBlock)) {
+        return false;
+    }
+    
+    *this = encrypt_bucket(decrypted_bucket, key);
+    
+    return true;
 }
 
 bool Bucket::startaddblock(block& newBlock) {

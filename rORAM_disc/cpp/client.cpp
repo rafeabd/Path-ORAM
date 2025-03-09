@@ -23,7 +23,7 @@ Client::Client(vector<pair<int,string>> data_to_add, int bucket_capacity, int ma
     this->key = generateEncryptionKey(64);
     this->num_blocks = data_to_add.size();
     //this->num_buckets = 1 << static_cast<int>(ceil(log2(num_blocks)));
-    this->num_buckets = 1 << static_cast<int>(ceil(log2(num_blocks/4)));
+    this->num_buckets = 1 << static_cast<int>(ceil(log2(num_blocks)));
     this->L = ceil(log2(this->num_buckets));
     this->max_range = max_range;
     this->bucket_capacity = bucket_capacity;

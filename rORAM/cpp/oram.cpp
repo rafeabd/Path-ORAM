@@ -1,4 +1,5 @@
 #include "../include/oram.h"
+#include "../include/encryption.h"
 #include <cmath>
 #include <iostream>
 #include <algorithm>
@@ -9,13 +10,14 @@
 using namespace std;
 
 ORAM::ORAM(int numBuckets, int bucketCapacity, const vector<unsigned char>& encryptionKey, int range_length) {
+    this->encryption_key = encryptionKey;
     this->bucketCapacity = bucketCapacity;
     this->num_buckets = numBuckets;
     this->range_length = range_length;
     this->global_counter = 0;
     heap.reserve(numBuckets);
     for (int i = 0; i < numBuckets; i++) {
-        heap.push_back(Bucket(bucketCapacity));
+        heap.push_back(encrypt_bucket(Bucket(bucketCapacity), encryption_key));
     }
 }
 
@@ -68,7 +70,7 @@ int ORAM::parent(int i) {
 }
 
 Bucket ORAM::read_bucket(int logical_index) {
-    cout << "logical index" << endl;
+    //cout << "logical index" << endl;
     return heap[toPhysicalIndex(logical_index)];
 }
 
@@ -85,7 +87,7 @@ vector<Bucket> ORAM::readBucketsAndClear(int level, int start_index, int count) 
         if (normalIndex >= num_buckets) continue;
         int physicalIndex = toPhysicalIndex(normalIndex);
         buckets.push_back(heap[physicalIndex]);
-        heap[physicalIndex] = Bucket(bucketCapacity);
+        heap[physicalIndex] = encrypt_bucket(Bucket(bucketCapacity),encryption_key);
     }
     return buckets;
 }
@@ -151,7 +153,7 @@ vector<int> ORAM::getpathindicies_ltor(int leaf) {
 block ORAM::writeBlockToPath(const block &b, int logicalLeaf) {
     vector<int> path_indices = getpathindicies_ltor(logicalLeaf);
     for (int bucketIndex : path_indices) {
-        if (heap[bucketIndex].addBlock(b)) {
+        if (heap[bucketIndex].add_block_in_tree(b,encryption_key)) {
             return block();
         }
     }

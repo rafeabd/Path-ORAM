@@ -9,7 +9,7 @@ using namespace std;
 
 class ORAM {
 private:
-    
+    vector<unsigned char> encryption_key;
 
 public:
     vector<Bucket> heap;
