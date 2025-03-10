@@ -282,3 +282,17 @@ Bucket deserialize_bucket(string read_string){
     }
     return result;
 }
+
+Bucket encrypt_bucket(Bucket bucket_to_encrypt, const vector<unsigned char>& key){
+    for (block &b: bucket_to_encrypt.getBlocks()){
+        b = encryptBlock(b,key);
+    }
+    return bucket_to_encrypt;
+}
+
+Bucket decrypt_bucket(Bucket bucket_to_decrypt, const vector<unsigned char>& key){
+    for (block &b: bucket_to_decrypt.getBlocks()){
+        b = decryptBlock(b,key);
+    }
+    return bucket_to_decrypt;
+}

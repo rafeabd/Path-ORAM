@@ -44,7 +44,7 @@ public:
     void print_stashes();
     void print_position_maps();
     void print_tree_state(int tree_index, int max_level);
-    void printLogicalTreeState(int tree_index, int max_level);
+    void printLogicalTreeState(int tree_index, int max_level, bool decrypt);
     void init_test_data();
     void print_path(int leaf, int tree_n);
     int getRandomLeafInRange(int start, int range_size);

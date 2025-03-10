@@ -14,10 +14,10 @@ using namespace std;
 
 int main() {
     // Number of blocks to test
-    int num_blocks = 100;
+    int num_blocks = 10;
     
     // Query range parameters
-    int query_range = 10;  // Default range size for queries
+    int query_range = 1;  // Default range size for queries
     
     // Calculate appropriate ORAM parameters
     // Buckets should be 2^i-1 where i makes it larger than num_blocks
@@ -53,6 +53,8 @@ int main() {
     }
     
     cout << "\nAccessing blocks by range to verify data integrity..." << endl;
+
+    auto start = std::chrono::high_resolution_clock::now();
     
     // Calculate how many range queries we need
     int num_range_queries = ceil((double)num_blocks / query_range);
@@ -96,6 +98,9 @@ int main() {
              << " blocks processed, " << successful_retrievals << " successful" << endl;
         cout << endl;
     }
+
+    auto end = std::chrono::high_resolution_clock::now();
+    std::chrono::duration<double> elapsed_seconds = end - start;
     
     // Print final results
     cout << "\nRetrieval results:" << endl;
@@ -114,6 +119,8 @@ int main() {
     } else {
         cout << "\nAll blocks were successfully retrieved!" << endl;
     }
+
+    std::cout << "Total reading time: " << elapsed_seconds.count() << "s\n";
     
     cout << "\n=== All tests completed ===" << endl;
     
