@@ -7,7 +7,6 @@
 
 using namespace std;
 
-//handles the blocks for the rOram
 block::block(int id, const string& data, bool dummy, const vector<int>& paths) {
     this->id = id;
     this->data = data;

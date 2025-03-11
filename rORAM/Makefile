@@ -2,7 +2,7 @@
 CXX = g++
 
 # Compiler flags
-CXXFLAGS = -std=c++11 -Wall -Wno-deprecated-declarations -Iinclude -I/opt/homebrew/opt/openssl@3/include
+CXXFLAGS = -std=c++11 -Wall -Iinclude -I/opt/homebrew/opt/openssl@3/include
 LDFLAGS = -L/opt/homebrew/opt/openssl@3/lib -lssl -lcrypto
 
 $(shell mkdir -p executable)
