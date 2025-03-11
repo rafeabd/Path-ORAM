@@ -44,7 +44,7 @@ vector<unsigned char> hexDecode(const string &hex) {
     return data;
 }
 
-// Creates an encrypted ID 
+// Creates an encrypted ID (HMAC)
 vector<unsigned char> create_encrypted_id(const vector<unsigned char>& key, const vector<unsigned char>& data, size_t length) {
     vector<unsigned char> output(length);
     unsigned int len = length;
@@ -116,6 +116,17 @@ vector<unsigned char> decryptData(const vector<unsigned char>& key, const vector
     }
     
     // Extract IV
+
+    /*
+    // creating stringstream object
+    stringstream ss;
+    // Insert every character of vector into stream
+    for (auto it = ciphertext.begin(); it != ciphertext.end(); it++)
+        ss << *it;
+
+    // converts stream contents into a string
+    cout << ss.str() << endl;
+    */
     vector<unsigned char> iv(ciphertext.begin(), ciphertext.begin() + iv_length);
     
     EVP_CIPHER_CTX* ctx = EVP_CIPHER_CTX_new();
@@ -151,8 +162,10 @@ vector<unsigned char> decryptData(const vector<unsigned char>& key, const vector
 }
 
 // Serialize block into string format
-string serializeBlock(const block &b) {
+string serializeBlock(block &b) {
+    //b.print_block();
     ostringstream oss;
+    // Serialize each field (consider using fixed-width formatting for id and paths if needed)
     oss << b.id << "|" << (b.dummy ? "1" : "0") << "|";
     
     // Serialize the paths vector
@@ -164,12 +177,23 @@ string serializeBlock(const block &b) {
     }
     oss << "|";
     
+    // Pad the data field to a fixed length (e.g., 30 characters)
     string paddedData = b.data;
-    paddedData.resize(30, ' ');  // adjust padding here
+    //paddedData.resize(30, ' ');
     oss << paddedData;
     
-    return oss.str();
+    // Now ensure the entire block string is fixed-size (e.g., 128 characters)
+    const size_t BLOCK_SIZE = 256;
+    string serialized = oss.str();
+    
+    if (serialized.size() > BLOCK_SIZE) {
+        throw runtime_error("Serialized block exceeds fixed block size");
+    }
+    serialized.resize(BLOCK_SIZE, ' ');
+    //cout << "serialized size" << serialized.size() << endl;
+    return serialized;
 }
+
 
 // Deserialize string back into block
 block deserializeBlock(const string &s) {
@@ -195,10 +219,11 @@ block deserializeBlock(const string &s) {
         }
     }
     
+    // Parse data
     string data;
     getline(iss, data);
     
-    // Remove padding 
+    // Remove padding spaces
     while (!data.empty() && data.back() == ' ') {
         data.pop_back();
     }
@@ -207,18 +232,15 @@ block deserializeBlock(const string &s) {
 }
 
 // Encrypt the whole block
-block encryptBlock(const block &b, const vector<unsigned char>& key) {
-    // all block data to string
+block encryptBlock(block &b, const vector<unsigned char>& key) {
+    //cout << "in encrypt block" << endl;
+    //b.print_block();
     string plaintext = serializeBlock(b);
     vector<unsigned char> plainVec(plaintext.begin(), plaintext.end());
-    
-    // actual encryption
     vector<unsigned char> cipherVec = encryptData(key, plainVec);
-    
-    // binary to hex conversion
     string cipherHex = hexEncode(cipherVec);
     vector<int> empty_path = {};
-    // Create encrypted block with the same paths
+    //cout << "size of encrypted block" << cipherHex.size() << endl;
     return block(0, cipherHex, false, empty_path);
 }
 
@@ -228,6 +250,40 @@ block decryptBlock(const block &b, const vector<unsigned char>& key) {
     vector<unsigned char> plainVec = decryptData(key, cipherVec);
     string plainText(plainVec.begin(), plainVec.end());
     return deserializeBlock(plainText);
+}
+
+string serialize_bucket(Bucket bucket){
+    ostringstream oss;
+    for (block b : bucket.getBlocks()){
+        //cout << "data size: " << b.data.size() << endl;
+        oss << b.data;
+    }
+    //cout << oss.str().size() << endl;
+    return oss.str();
+}
+
+Bucket deserialize_bucket(string read_string){
+    const size_t blockSize = 576;
+    const size_t expectedSize = 2304;
+    
+    // Check that the input string is the expected size.
+    if (read_string.size() != expectedSize) {
+        cout << "read_string: " << read_string.size() << endl;
+        throw runtime_error("Bucket data must be exactly 512 characters.");
+    }
+    
+    vector<block> blocks;
+    // Loop over the string in increments of 320.
+    for (size_t i = 0; i < expectedSize; i += blockSize) {
+        string blockStr = read_string.substr(i, blockSize);
+        block block_being_deserialized = block(0,blockStr,false,vector<int>{});
+        blocks.push_back(block_being_deserialized);
+    }
+    Bucket result = Bucket();
+    for (block b: blocks){
+        result.addBlock(b);
+    }
+    return result;
 }
 
 Bucket encrypt_bucket(Bucket bucket_to_encrypt, const vector<unsigned char>& key){
