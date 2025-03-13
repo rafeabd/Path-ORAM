@@ -4,6 +4,8 @@
 #include "../include/server.h"
 #include "../include/helper.h"
 #include <iostream>
+#include <chrono>
+#include <thread>
 #include <openssl/rand.h>
 #include <cstring>
 #include <vector>
@@ -22,9 +24,12 @@ using namespace std;
 Client::Client(vector<pair<int,string>> data_to_add, int bucket_capacity, int max_range) {
     this->key = generateEncryptionKey(64);
     this->num_blocks = data_to_add.size();
+
+    //int height = ceil(log2(num_blocks + 1));
+    //this->num_buckets = (1 << height) - 1;
     
-    // Calculate height needed to accommodate all blocks
-    int height = ceil(log2(num_blocks + 1));
+    int target_buckets = ceil(num_blocks / 4.0);
+    int height = ceil(log2(target_buckets + 1));
     
     // Set num_buckets to exactly 2^h-1 for a perfect full binary tree
     this->num_buckets = (1 << height) - 1;
@@ -64,6 +69,10 @@ Client::Client(vector<pair<int,string>> data_to_add, int bucket_capacity, int ma
         int tree_range = 1 << l;
         ORAM* tree = new ORAM(num_buckets, bucket_capacity, key, tree_range, to_string(l));
         oram_trees.push_back(tree);
+        //cout << "pausing for 5 seconds" << endl;
+        //std::chrono::seconds dura( 5);
+        //std::this_thread::sleep_for( dura );
+        //cout << "pause finished" << endl;
 
         //cout << "adding" << endl;
         map<int,int>& position_map = position_maps[l];

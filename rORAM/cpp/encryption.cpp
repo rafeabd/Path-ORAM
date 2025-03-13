@@ -183,14 +183,14 @@ string serializeBlock(block &b) {
     oss << paddedData;
     
     // Now ensure the entire block string is fixed-size (e.g., 128 characters)
-    const size_t BLOCK_SIZE = 256;
+    const size_t BLOCK_SIZE = 2020;
     string serialized = oss.str();
     
     if (serialized.size() > BLOCK_SIZE) {
         throw runtime_error("Serialized block exceeds fixed block size");
     }
     serialized.resize(BLOCK_SIZE, ' ');
-    //cout << "serialized size" << serialized.size() << endl;
+    //cout << "serialized size of block in serialize block" << serialized.size() << endl;
     return serialized;
 }
 
@@ -258,13 +258,13 @@ string serialize_bucket(Bucket bucket){
         //cout << "data size: " << b.data.size() << endl;
         oss << b.data;
     }
-    //cout << oss.str().size() << endl;
+    //cout <<  "bucket size: " << oss.str().size() << endl;
     return oss.str();
 }
 
 Bucket deserialize_bucket(string read_string){
-    const size_t blockSize = 576;
-    const size_t expectedSize = 2304;
+    const size_t blockSize = 4096;
+    const size_t expectedSize = 16384;
     
     // Check that the input string is the expected size.
     if (read_string.size() != expectedSize) {

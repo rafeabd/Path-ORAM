@@ -3,6 +3,7 @@
 
 #include <vector>
 #include "block.h"
+#include "bucket.h"
 
 using namespace std;
 
@@ -25,7 +26,14 @@ string hexEncode(const vector<unsigned char>& data);
 vector<unsigned char> hexDecode(const string &hex);
 string serializeBlock(const block &b);
 block deserializeBlock(const string &s);
-block encryptBlock(const block &b, const vector<unsigned char>& key);
+
+string serialize_bucket(Bucket bucket);
+Bucket deserialize_bucket(string read_string);
+
+block encryptBlock(block &b, const vector<unsigned char>& key);
 block decryptBlock(const block &b, const vector<unsigned char>& key);
+
+Bucket encrypt_bucket(Bucket bucket_to_encrypt, const vector<unsigned char>& key);
+Bucket decrypt_bucket(Bucket bucket_to_encrypt, const vector<unsigned char>& key);
 
 #endif

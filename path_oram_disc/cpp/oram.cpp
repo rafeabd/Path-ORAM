@@ -1,4 +1,4 @@
-#include "../include/bst.h"
+#include "../include/oram.h"
 #include "../include/block.h"
 #include "../include/bucket.h"
 #include "../include/encryption.h"
@@ -11,11 +11,17 @@
 #include <cmath>
 using namespace std;
 
+#define bucket_char_size 16384
+
 BucketHeap::BucketHeap(int numBuckets, int bucketCapacity, const vector<unsigned char>& encKey)
     : bucketCapacity(bucketCapacity), encryptionKey(encKey)
 {
+    this->file_path = "tree/oram";
+    this->tree_file.open(file_path, std::ios::in | std::ios::out | std::ios::trunc | std::ios::binary);
+
+    Bucket bucket(bucketCapacity);
     for (int i = 0; i < numBuckets; i++) {
-        Bucket bucket(bucketCapacity);
+        
         // this is dumb but need to clear buckets after they have been initialized
         bucket.clear();
         //add encrypted dummy blocks to oram buckets
@@ -24,8 +30,11 @@ BucketHeap::BucketHeap(int numBuckets, int bucketCapacity, const vector<unsigned
             dummyBlock = encryptBlock(dummyBlock, encryptionKey);
             bucket.startaddblock(dummyBlock);
         }
-        heap.push_back(bucket);
+
+        tree_file << serialize_bucket(bucket);    
     }
+    tree_file.flush();
+    cout << "done" << endl;
 }
 
 // Returns the index of the parent node of the given index in a binary heap.
@@ -43,77 +52,58 @@ int BucketHeap::rightChild(int i) {
     return 2 * i + 2;  // Right child index formula in a heap.
 }
 
-// Adds a new Bucket to the heap.
-void BucketHeap::addBucket(const Bucket& bucket) {
-    heap.push_back(bucket);  // Push the new bucket onto the heap vector.
-}
-
-// Removes and returns the last Bucket from the heap.
-Bucket BucketHeap::removeBucket() {
-    Bucket last = heap.back();  // Store the last bucket in a temporary variable.
-    heap.pop_back();            // Remove the last bucket from the heap.
-    return last;                // Return the removed bucket.
-
-}
-
 // Retrieves a reference to the Bucket at a specific index in the heap.
-Bucket& BucketHeap::getBucket(int index) {
-    if (index >= 0 && index < heap.size()) {
-        return heap[index];  // Return the bucket at the given index.
+Bucket BucketHeap::getBucket(int index) {
+    //cout << index << endl;
+    tree_file.clear();
+    const std::streamoff offset = index * bucket_char_size;
+    tree_file.seekg(offset, std::ios::beg);
+    if (!tree_file) {
+        reopenFile();
+        if(!tree_file){
+            throw std::runtime_error("Seek failed.");
+        }
     }
-    throw out_of_range("Index out of range");  // Throw an exception if index is invalid.
+    char buffer[bucket_char_size];
+    tree_file.read(buffer, bucket_char_size);
+    //cout << "in read bucket" << endl;
+    //cout << tree_file.gcount() << endl;
+    if (tree_file.gcount() != bucket_char_size) {
+        throw std::runtime_error("Failed to read the full bucket.");
+    }
+    string bucket_data(buffer, bucket_char_size);
+    Bucket result = deserialize_bucket(bucket_data);
+    //result.print_bucket();
+    return result;
 }
 
 void BucketHeap::updateBucket(int index, const Bucket& bucket) {
-    if (index >= 0 && index < heap.size())
-        heap[index] = bucket;
-    else
-        throw out_of_range("Index out of range");
-}
-
-// Adds a Block to a specific Bucket in the heap.
-bool BucketHeap::addBlockToBucket(int bucketIndex, const block& b) {
-    if (bucketIndex >= 0 && bucketIndex < heap.size()) {
-        return heap[bucketIndex].addBlock(b);  // Call addBlock() on the targeted bucket.
+    tree_file.clear();
+    const std::streamoff offset = index * bucket_char_size;
+    tree_file.seekp(offset, std::ios::beg);
+    if (!tree_file) {
+        reopenFile();
+        if(!tree_file){
+            throw std::runtime_error("Seek failed.");
+        }
     }
-    return false;  // Return false if the index is out of bounds.
-}
 
-void BucketHeap::printHeap() {
-    /*
-    for (int i = 0; i < heap.size(); i++) {
-        cout << "Bucket " << i << ":\n";
-        cout << "  Parent: " << (i > 0 ? parent(i) : -1) << "\n";
-        cout << "  Left Child: " << (leftChild(i) < heap.size() ? leftChild(i) : -1) << "\n";
-        cout << "  Right Child: " << (rightChild(i) < heap.size() ? rightChild(i) : -1) << "\n";
-        heap[i].print_bucket();
-        cout << "\n";
+    std::string bucket_data = serialize_bucket(bucket);
+    tree_file.write(bucket_data.data(), bucket_char_size);
+
+    if (!tree_file) {
+        throw std::runtime_error("Write failed.");
     }
-    */
-
-    for (int i = 0; i < heap.size(); i++) {
-        cout << "Bucket " << i << ":\n";
-        heap[i].print_bucket();
-        cout << "\n";
-    }
+    tree_file.flush();
 }
 
-// Returns the number of Buckets in the heap.
-size_t BucketHeap::size() const {
-    return heap.size();  // Return the size of the heap vector.
-}
-
-// Checks if the heap is empty.
-bool BucketHeap::empty() const {
-    return heap.empty();  // Return true if the heap is empty, otherwise false.
-}
 
 // Returns a vector containing the path from a leaf bucket to the root.
 vector<block> BucketHeap::getPathFromLeaf(int leafIndex) {
     vector<block> path;  // Vector to store blocks along the path.
     int current = leafIndex;  // Start at the given leaf index.
     while (true) {
-        vector<block> blocks = heap[current].getBlocks();
+        vector<block> blocks = getBucket(current).getBlocks();
         path.insert(path.end(), blocks.begin(), blocks.end());
         if (current == 0) break;  
         current = parent(current);
@@ -127,7 +117,7 @@ vector<Bucket> BucketHeap::getPathBuckets(int leafIndex) {
     
     int current = leafIndex;
     while (true) {
-        path.push_back(heap[current]);
+        path.push_back(getBucket(current));
         if (current == 0) break;  
         current = parent(current);
     }
@@ -159,5 +149,15 @@ void BucketHeap::clear_bucket(int index) {
         dummyBlock = encryptBlock(dummyBlock, encryptionKey);
         newBucket.addBlock(dummyBlock);
     }
-    heap[index] = newBucket;
+    updateBucket(index, newBucket);
+}
+
+void BucketHeap::reopenFile() {
+    if (tree_file.is_open()) {
+        tree_file.close();
+    }
+    tree_file.open(file_path, std::ios::in | std::ios::out | std::ios::binary);
+    if (!tree_file.is_open()) {
+        throw std::runtime_error("Failed to reopen file");
+    }
 }

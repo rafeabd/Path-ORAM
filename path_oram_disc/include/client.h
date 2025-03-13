@@ -3,7 +3,7 @@
 
 #include "block.h"
 #include "bucket.h"
-#include "bst.h"
+#include "oram.h"
 #include "server.h"
 #include "encryption.h"
 #include <map>

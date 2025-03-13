@@ -10,7 +10,7 @@
 
 using namespace std;
 
-#define bucket_char_size 2304
+#define bucket_char_size 16384
 
 ORAM::ORAM(int numBuckets, int bucketCapacity, const vector<unsigned char>& encryptionKey, int range_length, string file) {
     this->encryptionKey = encryptionKey;
@@ -18,9 +18,8 @@ ORAM::ORAM(int numBuckets, int bucketCapacity, const vector<unsigned char>& encr
     this->num_buckets = numBuckets;
     this->range_length = range_length;
     this->global_counter = 0;
-
-    file = "trees/" + file;
-    this->tree_file.open(file, std::ios::in | std::ios::out | std::ios::trunc);
+    this->file_path = "trees/" + file;
+    this->tree_file.open(file_path, std::ios::in | std::ios::out | std::ios::trunc | std::ios::binary);
     
     for (int i = 0; i < numBuckets; i++) {
         tree_file << serialize_bucket(encrypt_bucket(Bucket(),encryptionKey));
@@ -85,10 +84,15 @@ int ORAM::parent(int i) {
 Bucket ORAM::read_bucket(int logical_index) {
     // Calculate the byte offset for the desired node.
     //cout << "logical index in read_bucket" << logical_index << endl;
+
+    tree_file.clear();
     const std::streamoff offset = toPhysicalIndex(logical_index) * bucket_char_size;
     tree_file.seekg(offset, std::ios::beg);
     if (!tree_file) {
-        throw std::runtime_error("Seek failed.");
+        reopenFile();
+        if(!tree_file){
+            throw std::runtime_error("Seek failed.");
+        }
     }
     char buffer[bucket_char_size];
     tree_file.read(buffer, bucket_char_size);
@@ -105,10 +109,14 @@ Bucket ORAM::read_bucket(int logical_index) {
 Bucket ORAM::read_bucket_physical(int physicalIndex) {
     // Calculate the byte offset for the desired node.
     //cout << "logical index in read_bucket" << logical_index << endl;
+    tree_file.clear();
     const std::streamoff offset = physicalIndex * bucket_char_size;
     tree_file.seekg(offset, std::ios::beg);
     if (!tree_file) {
-        throw std::runtime_error("Seek failed.");
+        reopenFile();
+        if(!tree_file){
+            throw std::runtime_error("Seek failed.");
+        }
     }
     char buffer[bucket_char_size];
     tree_file.read(buffer, bucket_char_size);
@@ -125,6 +133,7 @@ Bucket ORAM::read_bucket_physical(int physicalIndex) {
 
 
 vector<Bucket> ORAM::readBucketsAndClear(int level, int start_index, int count) {
+    tree_file.clear();
     int levelStart = (1 << level) - 1;
     // No need to recalculate the level count, just use 2^level for a complete tree
     int levelCount = (1 << level);
@@ -152,10 +161,14 @@ vector<Bucket> ORAM::readBucketsAndClear(int level, int start_index, int count) 
 }
 
 void ORAM::updateBucket(int logicalIndex, const Bucket &newBucket) {
+    tree_file.clear();
     const std::streamoff offset = toPhysicalIndex(logicalIndex) * bucket_char_size;
     tree_file.seekp(offset, std::ios::beg);
     if (!tree_file) {
-        throw std::runtime_error("Seek failed.");
+        reopenFile();
+        if(!tree_file){
+            throw std::runtime_error("Seek failed.");
+        }
     }
 
     std::string bucket_data = serialize_bucket(newBucket);
@@ -234,6 +247,7 @@ vector<int> ORAM::getpathindicies_ltor(int leaf) {
 }
 
 block ORAM::writeBlockToPath(const block &b, int logicalLeaf, vector<unsigned char> key) {
+    //cout << "writingblocktopath" << endl;
     vector<int> path_indices = getpathindicies_ltor(logicalLeaf);
     for (int logicalIndex : path_indices) {
         Bucket currentBucket = read_bucket(logicalIndex);
@@ -262,3 +276,12 @@ block ORAM::writeBlockToPath(const block &b, int logicalLeaf, vector<unsigned ch
     return b;
 }
 
+void ORAM::reopenFile() {
+    if (tree_file.is_open()) {
+        tree_file.close();
+    }
+    tree_file.open(file_path, std::ios::in | std::ios::out | std::ios::binary);
+    if (!tree_file.is_open()) {
+        throw std::runtime_error("Failed to reopen file");
+    }
+}

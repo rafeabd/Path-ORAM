@@ -1,5 +1,5 @@
 #include "../include/client.h"
-#include "../include/bst.h"
+#include "../include/oram.h"
 #include "../include/encryption.h"
 #include "../include/server.h" 
 #include <iostream>

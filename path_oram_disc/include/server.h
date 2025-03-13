@@ -2,7 +2,7 @@
 #define SERVER_H
 
 #include "bucket.h"
-#include "bst.h"
+#include "oram.h"
 #include <vector>
 
 using namespace std;

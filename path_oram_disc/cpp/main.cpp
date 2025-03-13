@@ -1,7 +1,7 @@
 #include "../include/client.h"
 #include "../include/server.h"
 #include "../include/bucket.h"
-#include "../include/bst.h"
+#include "../include/oram.h"
 #include "../include/encryption.h"
 #include <iostream>
 #include <fstream>
@@ -17,7 +17,7 @@ using namespace std::chrono;
 
 int main() {
     // initial parameters
-    int num_buckets_low = 1024; // lower bound for buckets - fixed
+    int num_buckets_low = 131072; // lower bound for buckets - fixed
     cout << "num buckets: " << num_buckets_low << endl;
     int bucket_capacity = 4;
     int L = ceil(log2(num_buckets_low));
@@ -28,7 +28,7 @@ int main() {
     cout << "Initializing oram with " << num_buckets << " buckets." << endl;
 
     // generate encryption key
-    vector<unsigned char> encryptionKey = generateEncryptionKey(32);
+    vector<unsigned char> encryptionKey = generateEncryptionKey(64);
 
     // init oram
     BucketHeap oram_tree(num_buckets, bucket_capacity, encryptionKey);
@@ -38,7 +38,7 @@ int main() {
     Client client(num_buckets_low, &server, encryptionKey);
 
     // Read dataset file and write blocks from it
-    string datasetPath = "/Users/rabdulali/Desktop/Path-ORAM/tests/2^10.txt";
+    string datasetPath = "/Users/rabdulali/Desktop/Path-ORAM/tests/2^17.txt";
     ifstream infile(datasetPath);
     string line;
     while(getline(infile, line)) {
@@ -53,7 +53,7 @@ int main() {
     infile.close();
 
     // Define the range query sizes using exponents: 2^1, 2^4, 2^10, and 2^14.
-    vector<int> exponents = {1, 4, 10};
+    vector<int> exponents = {1, 4, 10, 14};
 
     for (int exp : exponents) {
         int numBlocksExpected = 1 << exp;  // Calculate 2^exp

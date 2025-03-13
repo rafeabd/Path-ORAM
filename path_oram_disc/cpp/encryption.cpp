@@ -2,6 +2,7 @@
 #include <openssl/hmac.h>
 #include <openssl/evp.h>
 #include <openssl/rand.h>
+#include <openssl/err.h>
 #include <vector>
 #include <stdexcept>
 #include <algorithm>
@@ -11,8 +12,17 @@
 
 #include "../include/encryption.h"
 #include "../include/block.h"
+#include "../include/bucket.h"
 
 using namespace std;
+
+vector<unsigned char> generateEncryptionKey(size_t length) {
+    vector<unsigned char> key(length);
+    if (!RAND_bytes(key.data(), length)) {
+        throw runtime_error("Error generating random bytes for key");
+    }
+    return key;
+}
 
 // Encodes a vector of unsigned char into a hexadecimal string.
 string hexEncode(const vector<unsigned char>& data) {
@@ -35,7 +45,7 @@ vector<unsigned char> hexDecode(const string &hex) {
     return data;
 }
 
-//generates encrypted id - don't use
+// Creates an encrypted ID (HMAC)
 vector<unsigned char> create_encrypted_id(const vector<unsigned char>& key, const vector<unsigned char>& data, size_t length) {
     vector<unsigned char> output(length);
     unsigned int len = length;
@@ -49,15 +59,6 @@ vector<unsigned char> create_encrypted_id(const vector<unsigned char>& key, cons
     return output;
 }
 
-//generates keys
-vector<unsigned char> generateEncryptionKey(size_t length) {
-    vector<unsigned char> key(length);
-    if (!RAND_bytes(key.data(), length)) {
-        throw runtime_error("Error generating random bytes for key");
-    }
-    return key;
-}
-
 // Randomized encryption
 vector<unsigned char> encryptData(const vector<unsigned char>& key, const vector<unsigned char>& plaintext) {
     EVP_CIPHER_CTX* ctx = EVP_CIPHER_CTX_new();
@@ -66,60 +67,48 @@ vector<unsigned char> encryptData(const vector<unsigned char>& key, const vector
     const EVP_CIPHER* cipher = EVP_aes_256_cbc();
     int iv_length = EVP_CIPHER_iv_length(cipher);
     
-    // Generate a random #
+    // Generate a random IV
     vector<unsigned char> iv(iv_length);
-    RAND_bytes(iv.data(), iv_length);
-    EVP_EncryptInit_ex(ctx, cipher, NULL, key.data(), iv.data());
-    /*
     if (RAND_bytes(iv.data(), iv_length) != 1) {
         EVP_CIPHER_CTX_free(ctx);
         throw std::runtime_error("Failed to generate random IV");
     }
     
-    // Initialize encryption with random #
+    // Initialize encryption with random IV
     if(1 != EVP_EncryptInit_ex(ctx, cipher, NULL, key.data(), iv.data())) {
         EVP_CIPHER_CTX_free(ctx);
         throw std::runtime_error("EVP_EncryptInit_ex failed");
     }
-    */
     
-    // output buf, randomized #+cipher
+    // Output buffer, randomized IV+cipher
     vector<unsigned char> ciphertext(iv); // Prepend IV.
     ciphertext.resize(iv_length + plaintext.size() + EVP_CIPHER_block_size(cipher));
     
     int len;
     int ciphertext_len = 0;
     
-    // encrypt plaintext
-
-    /*
+    // Encrypt plaintext
     if(1 != EVP_EncryptUpdate(ctx, ciphertext.data() + iv_length, &len, plaintext.data(), plaintext.size())) {
         EVP_CIPHER_CTX_free(ctx);
         throw std::runtime_error("EVP_EncryptUpdate failed");
     }
-    */
-    EVP_EncryptUpdate(ctx, ciphertext.data() + iv_length, &len, plaintext.data(), plaintext.size());
     ciphertext_len = len;
-    EVP_EncryptFinal_ex(ctx, ciphertext.data() + iv_length + len, &len);
-    /*
+    
     if(1 != EVP_EncryptFinal_ex(ctx, ciphertext.data() + iv_length + len, &len)) {
         EVP_CIPHER_CTX_free(ctx);
         throw std::runtime_error("EVP_EncryptFinal_ex failed");
     }
-    */
     ciphertext_len += len;
     
     EVP_CIPHER_CTX_free(ctx);
     
-    // resize the proper output length
+    // Resize to the proper output length
     ciphertext.resize(iv_length + ciphertext_len);
-
-    //cout << "Encrypted data length: " << ciphertext.size() << endl;
 
     return ciphertext;
 }
 
-// decrypt using the random # from ciphertext
+// Decrypt using the IV from ciphertext
 vector<unsigned char> decryptData(const vector<unsigned char>& key, const vector<unsigned char>& ciphertext) {
     const EVP_CIPHER* cipher = EVP_aes_256_cbc();
     int iv_length = EVP_CIPHER_iv_length(cipher);
@@ -127,7 +116,18 @@ vector<unsigned char> decryptData(const vector<unsigned char>& key, const vector
         throw std::runtime_error("Ciphertext too short, missing IV");
     }
     
-    // get random #
+    // Extract IV
+
+    /*
+    // creating stringstream object
+    stringstream ss;
+    // Insert every character of vector into stream
+    for (auto it = ciphertext.begin(); it != ciphertext.end(); it++)
+        ss << *it;
+
+    // converts stream contents into a string
+    cout << ss.str() << endl;
+    */
     vector<unsigned char> iv(ciphertext.begin(), ciphertext.begin() + iv_length);
     
     EVP_CIPHER_CTX* ctx = EVP_CIPHER_CTX_new();
@@ -138,7 +138,7 @@ vector<unsigned char> decryptData(const vector<unsigned char>& key, const vector
         throw std::runtime_error("EVP_DecryptInit_ex failed");
     }
     
-    // buf for plaintext
+    // Buffer for plaintext
     vector<unsigned char> plaintext(ciphertext.size() - iv_length); 
     int len;
     int plaintext_len = 0;
@@ -150,6 +150,20 @@ vector<unsigned char> decryptData(const vector<unsigned char>& key, const vector
     plaintext_len = len;
     
     if(1 != EVP_DecryptFinal_ex(ctx, plaintext.data() + len, &len)) {
+        unsigned long err = ERR_get_error();
+        char err_buf[256];
+        ERR_error_string_n(err, err_buf, sizeof(err_buf));
+        cout << "Decryption error: " << err_buf << endl;
+        cout << "IV size: " << iv_length << endl;
+        cout << "Ciphertext size: " << ciphertext.size() << endl;
+        
+        // Dump first few bytes of ciphertext
+        cout << "Ciphertext start bytes: ";
+        for (int i = 0; i < std::min(32, (int)ciphertext.size()); i++) {
+            printf("%02x ", ciphertext[i]);
+        }
+        cout << endl;
+        
         EVP_CIPHER_CTX_free(ctx);
         throw std::runtime_error("EVP_DecryptFinal_ex failed");
     }
@@ -159,18 +173,16 @@ vector<unsigned char> decryptData(const vector<unsigned char>& key, const vector
     
     plaintext.resize(plaintext_len);
 
-    //cout << "Decrypted data length: " << plaintext.size() << endl;
-
     return plaintext;
 }
 
-// make it so all block info can be stored in just the data
+// Serialize block into string format
 string serializeBlock(const block &b) {
     ostringstream oss;
     oss << b.id << "|" << b.leaf << "|" << (b.dummy ? "1" : "0") << "|";
     // Pad data to fixed 20 characters
     string paddedData = b.data;
-    paddedData.resize(20, ' ');
+    paddedData.resize(2020, ' ');
     oss << paddedData;
     return oss.str();
 }
@@ -194,29 +206,70 @@ block deserializeBlock(const string &s) {
     return block(id, leaf, data, dummy);
 }
 
-// encrypt the whole block
-block encryptBlock(const block &b, const vector<unsigned char>& key) {
-    // all block data to string
+// Encrypt the whole block
+block encryptBlock(block &b, const vector<unsigned char>& key) {
+    //cout << "in encrypt block" << endl;
+    //b.print_block();
     string plaintext = serializeBlock(b);
     vector<unsigned char> plainVec(plaintext.begin(), plaintext.end());
-    //cout << "Plaintext  size: " << plainVec.size() << endl;
-    // actual encryption
     vector<unsigned char> cipherVec = encryptData(key, plainVec);
-    //cout << "Ciphertext size: " << cipherVec.size() << endl;
-    // binary to hex conversion
     string cipherHex = hexEncode(cipherVec);
-    //cout << "Encrypting block: " << plaintext << " -> " << cipherHex << endl;
-    return block(0, 0, cipherHex, true);
+    //cout << "size of encrypted block" << cipherHex.size() << endl;
+    return block(-1,-1, cipherHex, false);
 }
 
-// decrypt whole block
+// Decrypt whole block
 block decryptBlock(const block &b, const vector<unsigned char>& key) {
     vector<unsigned char> cipherVec = hexDecode(b.data);
-    //cout << "Ciphertext size: " << cipherVec.size() << endl;
-    //cout << "Decrypting block: " << b.data << " -> " << cipherVec.size() << " bytes" << endl;
     vector<unsigned char> plainVec = decryptData(key, cipherVec);
-    //cout << "Plaintext size: " << plainVec.size() << endl;
     string plainText(plainVec.begin(), plainVec.end());
-    //cout << "Decrypted block: " << b.data << " -> " << plainText << endl;
     return deserializeBlock(plainText);
+}
+
+string serialize_bucket(Bucket bucket){
+    ostringstream oss;
+    for (block b : bucket.getBlocks()){
+        //cout << "data size: " << b.data.size() << endl;
+        oss << b.data;
+    }
+    //cout <<  "bucket size: " << oss.str().size() << endl;
+    return oss.str();
+}
+
+Bucket deserialize_bucket(string read_string){
+    const size_t blockSize = 4096;
+    const size_t expectedSize = 16384;
+    
+    // Check that the input string is the expected size.
+    if (read_string.size() != expectedSize) {
+        cout << "read_string: " << read_string.size() << endl;
+        throw runtime_error("Bucket data must be exactly 512 characters.");
+    }
+    
+    vector<block> blocks;
+    // Loop over the string in increments of 320.
+    for (size_t i = 0; i < expectedSize; i += blockSize) {
+        string blockStr = read_string.substr(i, blockSize);
+        block block_being_deserialized = block(-1,-1, blockStr,false);
+        blocks.push_back(block_being_deserialized);
+    }
+    Bucket result = Bucket();
+    for (block b: blocks){
+        result.addBlock(b);
+    }
+    return result;
+}
+
+Bucket encrypt_bucket(Bucket bucket_to_encrypt, const vector<unsigned char>& key){
+    for (block &b: bucket_to_encrypt.getBlocks()){
+        b = encryptBlock(b,key);
+    }
+    return bucket_to_encrypt;
+}
+
+Bucket decrypt_bucket(Bucket bucket_to_decrypt, const vector<unsigned char>& key){
+    for (block &b: bucket_to_decrypt.getBlocks()){
+        b = decryptBlock(b,key);
+    }
+    return bucket_to_decrypt;
 }

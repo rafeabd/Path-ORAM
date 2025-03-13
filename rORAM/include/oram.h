@@ -17,6 +17,7 @@ private:
 public:
     ~ORAM();
     fstream tree_file;
+    string file_path;
     int bucketCapacity;
     
     int global_counter;
@@ -56,6 +57,8 @@ public:
     Bucket read_bucket_physical_clear(int physicalIndex);
 
     void updateBucket_physical(int physicalIndex, const Bucket &newBucket);
+
+    void reopenFile();
 };
 
 #endif
