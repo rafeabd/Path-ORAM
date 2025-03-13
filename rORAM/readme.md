@@ -3,17 +3,22 @@
 ## Overview
 This project implements the Range ORAM (Oblivious RAM) extension of Path ORAM system with client-server architecture, providing secure and efficient data access with hidden access patterns. The implementation includes support for encryption, dynamic data management, and secure client-server communication.
 
-## Features
-- Range ORAM Extension of Path ORAM 
+## Previous Path ORAM Features
+- Range ORAM (rORAM) Extension of Path ORAM 
 - AES-256-CBC encryption
 - Secure client-server architecture
 - Random access pattern obfuscation
 - Range query support
-- 
+  
+## Range ORAM Features
+- Hierarchical storage support
+- Access pattern tracking
+- Background operations
+- Write buffer management
 
 ## Project Structure
 ```
-path-oram/
+rORAM/
 ├── include/
 │   ├── block.h
 │   ├── bucket.h
@@ -110,12 +115,6 @@ Manages server-side operations:
 - Space Overhead: O(N)
 - Stash Size: O(log N)
 
-## Extending to rORAM
-The codebase includes preparation for rORAM extension:
-- Hierarchical storage support
-- Access pattern tracking
-- Background operations
-- Write buffer management
 
 ## Contributing
 1. Fork the repository
