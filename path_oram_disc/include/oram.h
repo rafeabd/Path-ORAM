@@ -23,7 +23,7 @@ public:
     void addBucket(const Bucket& bucket);
     Bucket removeBucket();
     Bucket getBucket(int index);
-    void updateBucket(int index, const Bucket& bucket);
+    void updateBucket(int index, Bucket& bucket);
     bool addBlockToBucket(int bucketIndex, const block& b);
     void printHeap();
     size_t size() const;

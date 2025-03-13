@@ -177,13 +177,14 @@ vector<unsigned char> decryptData(const vector<unsigned char>& key, const vector
 }
 
 // Serialize block into string format
-string serializeBlock(const block &b) {
+string serializeBlock(block &b) {
     ostringstream oss;
     oss << b.id << "|" << b.leaf << "|" << (b.dummy ? "1" : "0") << "|";
     // Pad data to fixed 20 characters
     string paddedData = b.data;
-    paddedData.resize(2020, ' ');
+    //paddedData.resize(2020, ' ');
     oss << paddedData;
+    
     return oss.str();
 }
 
@@ -211,6 +212,7 @@ block encryptBlock(block &b, const vector<unsigned char>& key) {
     //cout << "in encrypt block" << endl;
     //b.print_block();
     string plaintext = serializeBlock(b);
+    plaintext.resize(2028, ' ');
     vector<unsigned char> plainVec(plaintext.begin(), plaintext.end());
     vector<unsigned char> cipherVec = encryptData(key, plainVec);
     string cipherHex = hexEncode(cipherVec);

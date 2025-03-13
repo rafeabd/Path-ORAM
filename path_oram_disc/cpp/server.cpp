@@ -30,6 +30,6 @@ vector<Bucket> Server::give_path(int leaf) {
     return path;
 }
 
-void Server::write_bucket(const Bucket& path, int bucket_index) {
+void Server::write_bucket(Bucket& path, int bucket_index) {
     oram.updateBucket(bucket_index, path);
 }

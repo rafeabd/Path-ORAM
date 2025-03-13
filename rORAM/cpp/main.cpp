@@ -154,10 +154,11 @@ int main() {
 int main(int argc, char* argv[]) {
     // Fixed dataset size: 2^20 blocks
     const int dataset_size_power = 15;
-    const int num_blocks = 1 << dataset_size_power; // 2^20 = 1,048,576
+    const int num_blocks = 1 << dataset_size_power; 
     
     // Range query sizes to test: 2^1, 2^4, 2^10, 2^14
     const vector<int> range_sizes = {
+        /*
         1 << 1,  // 2^1 = 2
         1 << 2,
         1 << 3,
@@ -171,7 +172,9 @@ int main(int argc, char* argv[]) {
         1 << 11,
         1 << 12,
         1 << 13,
-        1 << 14  // 2^14 = 16384
+        1 << 14,  // 2^14 = 16384
+        */
+        1 << 15
     };
 
     // Compute ORAM parameters based on the dataset size
@@ -183,7 +186,7 @@ int main(int argc, char* argv[]) {
     int bucket_capacity = 4;
     
     // Find max range needed (the largest of our test range sizes)
-    int max_range_power = 14; // 2^14 is our largest range
+    int max_range_power = 15; // 2^14 is our largest range
     int max_range = (1 << (max_range_power + 1)) + 1; // Adding buffer as in original code
 
     cout << "=== ORAM RANGE QUERY PERFORMANCE TEST ===" << endl;

@@ -22,7 +22,7 @@ BucketHeap::BucketHeap(int numBuckets, int bucketCapacity, const vector<unsigned
     Bucket bucket(bucketCapacity);
     for (int i = 0; i < numBuckets; i++) {
         
-        // this is dumb but need to clear buckets after they have been initialized
+        // this is dumb but need to clear buckets after they have been initialized - because we are adding dummt bu
         bucket.clear();
         //add encrypted dummy blocks to oram buckets
         for (int j = 0; j < bucketCapacity; j++) {
@@ -37,22 +37,18 @@ BucketHeap::BucketHeap(int numBuckets, int bucketCapacity, const vector<unsigned
     cout << "done" << endl;
 }
 
-// Returns the index of the parent node of the given index in a binary heap.
 int BucketHeap::parent(int i) { 
-    return (i - 1) / 2;  // Integer division finds the parent index.
+    return (i - 1) / 2;  
 }
 
-// Returns the index of the left child of the given index in a binary heap.
 int BucketHeap::leftChild(int i) { 
-    return 2 * i + 1;  // Left child index formula in a heap.
+    return 2 * i + 1;  
 }
 
-// Returns the index of the right child of the given index in a binary heap.
 int BucketHeap::rightChild(int i) { 
-    return 2 * i + 2;  // Right child index formula in a heap.
+    return 2 * i + 2; 
 }
 
-// Retrieves a reference to the Bucket at a specific index in the heap.
 Bucket BucketHeap::getBucket(int index) {
     //cout << index << endl;
     tree_file.clear();
@@ -77,7 +73,9 @@ Bucket BucketHeap::getBucket(int index) {
     return result;
 }
 
-void BucketHeap::updateBucket(int index, const Bucket& bucket) {
+void BucketHeap::updateBucket(int index, Bucket& bucket) {
+    Bucket bucket_to_update = decrypt_bucket(bucket, encryptionKey);
+
     tree_file.clear();
     const std::streamoff offset = index * bucket_char_size;
     tree_file.seekp(offset, std::ios::beg);
@@ -88,7 +86,13 @@ void BucketHeap::updateBucket(int index, const Bucket& bucket) {
         }
     }
 
+    bucket_to_update = encrypt_bucket(bucket_to_update, encryptionKey);
     std::string bucket_data = serialize_bucket(bucket);
+    //cout << bucket_data.size() << endl;
+    //if (bucket_data.size() != 16384){
+    //    cout << "bucket that is the wrong size" << endl;
+    //    bucket.print_bucket();
+    //}
     tree_file.write(bucket_data.data(), bucket_char_size);
 
     if (!tree_file) {
@@ -122,6 +126,15 @@ vector<Bucket> BucketHeap::getPathBuckets(int leafIndex) {
         current = parent(current);
     }
     reverse(path.begin(), path.end());
+
+    //very stupid, hurts performance, but needed right now
+    for(Bucket &bucket : path){
+        bucket = decrypt_bucket(bucket,encryptionKey);
+    }
+
+    for (Bucket &bucket : path){
+        bucket = encrypt_bucket(bucket, encryptionKey);
+    }
     return path;
 }
 
