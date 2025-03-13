@@ -1,7 +1,7 @@
 # Range ORAM Implementation
 
 ## Overview
-This project implements the Range ORAM (Oblivious RAM) extension of Path ORAM system with client-server architecture, providing secure and efficient data access with hidden access patterns. The implementation includes support for encryption, dynamic data management, and secure client-server communication.
+This project implements the Range ORAM (Oblivious RAM) extension of Path ORAM system with client-server architecture, providing secure and efficient data access with hidden access patterns. The implementation expands on the previous support for encryption, dynamic data management, and secure client-server communication, and incorporates additional Range Oram (rORAM) features such as hierarchical storage support, access pattern tracking, and batch evictions.
 
 ## Previous Path ORAM Features
 - Range ORAM (rORAM) Extension of Path ORAM 
@@ -15,6 +15,7 @@ This project implements the Range ORAM (Oblivious RAM) extension of Path ORAM sy
 - Access pattern tracking
 - Background operations
 - Write buffer management
+- Batch evictions
 
 ## Project Structure
 ```
