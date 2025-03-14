@@ -92,7 +92,7 @@ void Client::writePath(int leaf, vector<Bucket>& path_buckets) {
         block b = it->second;
         int assigned_index = -1;
         for (int i = static_cast<int>(global_path.size()) - 1; i >= 0; i--) {
-            if (b.leaf >= bucket_ranges[i].first && b.leaf <= bucket_ranges[i].second) {
+            if (isOnPath(b.leaf,global_path[i])) {
                 assigned_index = i;
                 break;
             }

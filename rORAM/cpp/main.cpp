@@ -158,7 +158,7 @@ int main(int argc, char* argv[]) {
     
     // Range query sizes to test: 2^1, 2^4, 2^10, 2^14
     const vector<int> range_sizes = {
-        /*
+
         1 << 1,  // 2^1 = 2
         1 << 2,
         1 << 3,
@@ -173,8 +173,9 @@ int main(int argc, char* argv[]) {
         1 << 12,
         1 << 13,
         1 << 14,  // 2^14 = 16384
-        */
+        
         1 << 15
+
     };
 
     // Compute ORAM parameters based on the dataset size
