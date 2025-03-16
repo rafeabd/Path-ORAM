@@ -33,8 +33,8 @@ BucketHeap::BucketHeap(int numBuckets, int bucketCapacity, const vector<unsigned
 
         tree_file << serialize_bucket(bucket);    
     }
-    tree_file.flush();
-    cout << "done" << endl;
+    //flushCache();
+    //cout << "done" << endl;
 }
 
 int BucketHeap::parent(int i) { 
@@ -69,6 +69,7 @@ Bucket BucketHeap::getBucket(int index) {
     }
     string bucket_data(buffer, bucket_char_size);
     Bucket result = deserialize_bucket(bucket_data);
+    //flushCache();
     //result.print_bucket();
     return result;
 }
@@ -98,7 +99,7 @@ void BucketHeap::updateBucket(int index, Bucket& bucket) {
     if (!tree_file) {
         throw std::runtime_error("Write failed.");
     }
-    tree_file.flush();
+    //flushCache();
 }
 
 
@@ -173,4 +174,9 @@ void BucketHeap::reopenFile() {
     if (!tree_file.is_open()) {
         throw std::runtime_error("Failed to reopen file");
     }
+}
+
+void BucketHeap :: flushCache() {
+    tree_file.flush();
+    system("sync");
 }

@@ -59,6 +59,9 @@ public:
     void updateBucket_physical(int physicalIndex, const Bucket &newBucket);
 
     void reopenFile();
+    void flushCache();
+    void updateBucketForInitialization(int logicalIndex, const Bucket &newBucket);
+
 };
 
 #endif

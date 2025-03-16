@@ -34,6 +34,7 @@ public:
     void clear_bucket(int index);
 
     void reopenFile();
+    void flushCache();
 };
 
 #endif

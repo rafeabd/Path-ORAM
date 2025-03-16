@@ -7,6 +7,8 @@
 #include <stdexcept>
 #include <vector>
 #include <set>
+#include <unistd.h>
+#include <fcntl.h>  // Add this at the top with other includes
 
 using namespace std;
 
@@ -24,7 +26,8 @@ ORAM::ORAM(int numBuckets, int bucketCapacity, const vector<unsigned char>& encr
     for (int i = 0; i < numBuckets; i++) {
         tree_file << serialize_bucket(encrypt_bucket(Bucket(),encryptionKey));
     }
-    tree_file.flush();
+    //tree_file.flush();
+    //flushCache();
 }
 
 ORAM::~ORAM() {
@@ -103,6 +106,7 @@ Bucket ORAM::read_bucket(int logical_index) {
     }
     string bucket_data(buffer, bucket_char_size);
     Bucket result = deserialize_bucket(bucket_data);
+    //flushCache();
     return result;
 }
 
@@ -127,6 +131,7 @@ Bucket ORAM::read_bucket_physical(int physicalIndex) {
     }
     string bucket_data(buffer, bucket_char_size);
     Bucket result = deserialize_bucket(bucket_data);
+    //flushCache();
     return result;
 }
 
@@ -177,7 +182,26 @@ void ORAM::updateBucket(int logicalIndex, const Bucket &newBucket) {
     if (!tree_file) {
         throw std::runtime_error("Write failed.");
     }
-    tree_file.flush();
+    //flushCache();
+}
+
+void ORAM::updateBucketForInitialization(int logicalIndex, const Bucket &newBucket) {
+    tree_file.clear();
+    const std::streamoff offset = toPhysicalIndex(logicalIndex) * bucket_char_size;
+    tree_file.seekp(offset, std::ios::beg);
+    if (!tree_file) {
+        reopenFile();
+        if(!tree_file){
+            throw std::runtime_error("Seek failed.");
+        }
+    }
+
+    std::string bucket_data = serialize_bucket(newBucket);
+    tree_file.write(bucket_data.data(), bucket_char_size);
+
+    if (!tree_file) {
+        throw std::runtime_error("Write failed.");
+    }
 }
 
 void ORAM::updateBucketAtLevel(int level, int index_in_level, const Bucket &newBucket) {
@@ -265,7 +289,7 @@ block ORAM::writeBlockToPath(const block &b, int logicalLeaf, vector<unsigned ch
             }
             
             // Update the bucket
-            updateBucket(logicalIndex, currentBucket);
+            updateBucketForInitialization(logicalIndex, currentBucket);
             
             // Return an empty (dummy) block to indicate success
             return block(-1, "", true, vector<int>{});
@@ -284,4 +308,9 @@ void ORAM::reopenFile() {
     if (!tree_file.is_open()) {
         throw std::runtime_error("Failed to reopen file");
     }
+}
+
+void ORAM::flushCache() {
+    tree_file.flush();
+    system("sync");
 }

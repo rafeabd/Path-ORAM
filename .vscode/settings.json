@@ -58,6 +58,7 @@
         "map": "cpp",
         "list": "cpp",
         "forward_list": "cpp",
-        "span": "cpp"
+        "span": "cpp",
+        "fstream": "cpp"
     }
 }
