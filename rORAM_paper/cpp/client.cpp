@@ -21,6 +21,8 @@
 
 using namespace std;
 
+#define bucket_char_size 16384
+
 Client::Client(vector<pair<int,string>> data_to_add, int bucket_capacity, int max_range) {
     this->key = generateEncryptionKey(64);
     this->num_blocks = data_to_add.size();
@@ -169,106 +171,127 @@ tuple<vector<block>, int> Client::simple_read_range(int range_power, int id) {
     return make_tuple(result, p_prime);
 }
 
+// Improved simple_batch_evict: one disk seek per level for reading and one for writing
 void Client::simple_batch_evict(int eviction_number, int range_power) {
     unordered_map<int, block> &stash = stashes[range_power];
-    
-    // Print stash at the start of simple_batch_evict
-    //cout << "simple_batch_evict: stash for range_power " << range_power << " contains:" << endl;
-    //for (const auto &entry : stash) {
-    //    cout << "  Block id: " << entry.first << ", data: " << entry.second.data << endl;
-    //}
-    
     ORAM* tree = oram_trees[range_power];
     int evict_global = evict_counter[range_power];
-    // Use L directly instead of recalculating the height
-    int height = this->L;
+    int height = this->L;  // tree height
 
-    //cout << "############################################################" << endl;
-    //print_stashes();
-    // Read and clear buckets on the eviction paths into stash
+    // Process each level separately
     for (int j = 0; j < height; j++) {
-        vector<Bucket> buckets = tree->readBucketsAndClear(j, evict_global, eviction_number);
-        for (Bucket &bucket : buckets) {
+        // For level j, logical indices run from:
+        // levelStartLogical = 2^j - 1, and there are levelSize = 2^j buckets.
+        int levelSize = (1 << j);
+        int levelStartLogical = (1 << j) - 1;
+
+        // Get the physical start for this level: the physical index corresponding to the first logical index.
+        int physicalStart = tree->toPhysicalIndex(levelStartLogical);
+
+        // Read the entire level in one contiguous read.
+        vector<Bucket> levelBuckets = tree->read_bucket_physical_consecutive(physicalStart, levelSize);
+
+        // Build a mapping: for each bucket in the contiguous read, compute its logical index.
+        // We'll also build the inverse: for a given logical offset (0 .. levelSize-1) (i.e. logical index = levelStartLogical + offset),
+        // find its position in the contiguous vector.
+        vector<int> physicalIndexForLogical(levelSize, -1);
+        for (int i = 0; i < levelSize; i++) {
+            int physicalIdx = physicalStart + i;
+            int logical = tree->toNormalIndex(physicalIdx);
+            int offset = logical - levelStartLogical; // this should be in [0, levelSize-1]
+            physicalIndexForLogical[offset] = i;
+        }
+
+        // Compute the eviction target logical indices.
+        // For each t in [evict_global, evict_global + eviction_number), the target logical index is:
+        // levelStartLogical + (t mod levelSize)
+        set<int> targetLogicalIndices;
+        for (int t = evict_global; t < evict_global + eviction_number; t++) {
+            int offset = t % levelSize;
+            int targetLogical = levelStartLogical + offset;
+            targetLogicalIndices.insert(targetLogical);
+        }
+
+        // --- Reading phase ---
+        // For each target logical bucket, look it up in our contiguous array (via physicalIndexForLogical)
+        for (int targetLogical : targetLogicalIndices) {
+            int offset = targetLogical - levelStartLogical;
+            int pos = physicalIndexForLogical[offset];
+            if (pos < 0 || pos >= levelSize) continue;
+            Bucket &bucket = levelBuckets[pos];
             for (const block &blk : bucket.getBlocks()) {
                 if (!blk.data.empty()) {
                     try {
-                        // Decrypt the block 
                         block decrypted_blk = decryptBlock(blk, key);
-                        
-                        // Only process non-dummy blocks
                         if (!decrypted_blk.dummy) {
-                            // Move real block to stash if not already present
                             if (stash.find(decrypted_blk.id) == stash.end()) {
                                 stash[decrypted_blk.id] = decrypted_blk;
                             }
                         }
-                    } catch (const exception& e) {
-                        cout << "Skipping block during eviction: " << e.what() << endl;
+                    } catch (const exception &e) {
+                        cout << "Skipping block during eviction read at level " << j 
+                             << ": " << e.what() << endl;
                     }
                 }
             }
         }
-    }
-    //printLogicalTreeState(range_power, 10, 1);
-    //print_stashes();
-    //cout << "############################################################" << endl;
-    // Evict from stash: place blocks into new buckets from bottom level up, level by level
-    for (int j = height - 1; j >= 0; --j) {
-        // Determine target bucket indices at level j for this eviction range
-        set<int> target_indices;
-        for (int t = evict_global; t < evict_global + eviction_number; ++t) {
-            target_indices.insert(t % (1 << j));
-        }
-        
-        // Prepare all buckets for this level before writing
-        vector<pair<int, Bucket>> levelBuckets;
-        
-        // For each target bucket, prepare the encrypted bucket
-        for (int r : target_indices) {
+
+        // --- Writing phase ---
+        // For each target logical bucket, reassemble the bucket from the stash.
+        for (int targetLogical : targetLogicalIndices) {
+            int offset = targetLogical - levelStartLogical;
+            int pos = physicalIndexForLogical[offset];
+            if (pos < 0 || pos >= levelSize) continue;
+
             Bucket newBucket(bucket_capacity);
-            vector<int> candidate_ids;
-            
-            // Find all stash blocks whose path's prefix matches
+            // Here we need to decide which blocks from the stash belong in this bucket.
+            // In the original code, for each block in the stash, we compute:
+            //    bucket_index = (prefix_bits >= 0 ? (tag >> prefix_bits) : tag)
+            // and if that equals r (the target index within the level), then the block is a candidate.
             int prefix_bits = (height - 1) - j;
-            for (auto &entry : stash) {
-                int block_id = entry.first;
-                block &blk = entry.second;
-                if (blk.dummy) continue;
-                int tag = blk.paths[range_power];
+            int targetOffset = targetLogical - levelStartLogical;  // This is our r.
+            for (auto it = stash.begin(); it != stash.end(); ) {
+                int tag = it->second.paths[range_power];
                 int bucket_index = (prefix_bits >= 0 ? (tag >> prefix_bits) : tag);
-                if (bucket_index == r) {
-                    candidate_ids.push_back(block_id);
+                if (bucket_index == targetOffset) {
+                    bool added = newBucket.addBlock(it->second);
+                    if (added)
+                        it = stash.erase(it);
+                    else
+                        ++it;
+                    if (!newBucket.hasSpace())
+                        break;
+                } else {
+                    ++it;
                 }
             }
-            
-            // Fill the bucket with candidate blocks
-            for (int block_id : candidate_ids) {
-                if (stash.find(block_id) == stash.end()) continue;
-                block &blk = stash[block_id];
-                bool added = newBucket.addBlock(blk);
-                if (added) {
-                    stash.erase(block_id);
-                }
-                if (!newBucket.hasSpace()) {
-                    break;
-                }
-            }
-            
-            // Encrypt bucket
+            // Encrypt the updated bucket.
             Bucket encryptedBucket(bucket_capacity);
-            for (block &blk : newBucket.getBlocks()) {
-                block encrypted_blk = encryptBlock(blk, key);
+            for (block &b : newBucket.getBlocks()) {
+                block encrypted_blk = encryptBlock(b, key);
                 encryptedBucket.addBlock(encrypted_blk);
             }
-            
-            // Add to level buckets
-            levelBuckets.push_back(make_pair(r, encryptedBucket));
+            // Replace the corresponding bucket in our contiguous level read.
+            levelBuckets[pos] = encryptedBucket;
         }
-        
-        // Batch update all buckets at this level
-        tree->updateBucketsAtLevel(j, levelBuckets);
+
+        // Serialize the entire level into one contiguous buffer.
+        string levelData;
+        levelData.resize(levelSize * bucket_char_size, ' ');
+        for (int i = 0; i < levelSize; i++) {
+            string serialized = serialize_bucket(levelBuckets[i]);
+            memcpy(&levelData[i * bucket_char_size], serialized.data(), bucket_char_size);
+        }
+
+        // Write the entire level back in one contiguous write.
+        tree->writeContiguousLevel(physicalStart, levelSize, levelData);
     }
+
+    // Update the eviction counter (using the same update across levels).
+    int total_leaves = 1 << (L - 1);
+    evict_counter[range_power] = (evict_counter[range_power] + eviction_number) % total_leaves;
 }
+
 
 vector<block> Client::simple_access(int id, int range, int op, vector<string> data) {
     // Determine i for 2^(i-1) < range <= 2^i
