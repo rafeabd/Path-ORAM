@@ -443,7 +443,7 @@ void ORAM::writeContiguousLevel(int physicalStart, int count, const string &data
         tree_file.seekp(offset, std::ios::beg);
     }
     tree_file.write(data.data(), count * bucket_char_size);
-    tree_file.flush();
+    //tree_file.flush();
 }
 
 

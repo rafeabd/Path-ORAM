@@ -180,7 +180,6 @@ void Client::simple_batch_evict(int eviction_number, int range_power) {
     
     ORAM* tree = oram_trees[range_power];
     int evict_global = evict_counter[range_power];
-    // Use L directly instead of recalculating the height
     int height = this->L;
 
     //cout << "############################################################" << endl;

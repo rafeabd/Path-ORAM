@@ -150,12 +150,10 @@ vector<Bucket> ORAM::read_bucket_physical_consecutive(int physicalIndex, int ran
     int levelSize = (1 << level);
     int positionInLevel = physicalIndex - levelStart;
     
-    // Ensure we don't try to read more buckets than exist at this level
     range = min(range, levelSize);
     
     // Set max chunk size (number of buckets per read)
-    // Using a single bucket size as reference, but allowing for multiple buckets in one read
-    int maxChunkSize = 64; // This means we'll read up to 1MB at a time (64 * 16384 bytes)
+    int maxChunkSize = 64; 
     
     int remaining = range;
     int currentPos = positionInLevel;
@@ -205,49 +203,65 @@ vector<Bucket> ORAM::read_bucket_physical_consecutive(int physicalIndex, int ran
 
 
 vector<Bucket> ORAM::readBucketsAndClear(int level, int start_index, int count) {
-    // Calculate level parameters
     int levelStart = (1 << level) - 1;
     int levelSize = (1 << level);
     
     vector<Bucket> results;
     
-    // Collect the unique indices that need to be read
+    // Collect unique logical indices
     vector<int> normalIndices;
     for (int t = start_index; t < start_index + count; ++t) {
         int offset = t % levelSize;
         int normalIndex = levelStart + offset;
         
-        // Check for duplicates and bounds
         if (normalIndex < num_buckets && 
             find(normalIndices.begin(), normalIndices.end(), normalIndex) == normalIndices.end()) {
             normalIndices.push_back(normalIndex);
         }
     }
     
-    // Process indices in chunks of 64 to minimize seeks while ensuring reliability
-    const int CHUNK_SIZE = 64;
+    // Convert to physical indices and sort
+    vector<pair<int, int>> physicalIndices; // (physical, logical) pairs
+    for (int logicalIdx : normalIndices) {
+        int physicalIdx = toPhysicalIndex(logicalIdx);
+        physicalIndices.push_back({physicalIdx, logicalIdx});
+    }
     
-    for (size_t i = 0; i < normalIndices.size(); i += CHUNK_SIZE) {
-        size_t chunkEnd = min(i + CHUNK_SIZE, normalIndices.size());
-        vector<int> chunk(normalIndices.begin() + i, normalIndices.begin() + chunkEnd);
+    sort(physicalIndices.begin(), physicalIndices.end());
+    
+    // Find contiguous ranges and read them in single operations
+    for (size_t i = 0; i < physicalIndices.size();) {
+        int startPhysical = physicalIndices[i].first;
+        size_t rangeEnd = i + 1;
         
-        // Sort the chunk for potentially sequential access
-        sort(chunk.begin(), chunk.end());
+        // Find the end of the contiguous range
+        while (rangeEnd < physicalIndices.size() && 
+               physicalIndices[rangeEnd].first == physicalIndices[rangeEnd-1].first + 1) {
+            rangeEnd++;
+        }
         
-        // Process each index in the chunk
-        for (int idx : chunk) {
-            try {
-                // Read the bucket from disk using its logical index
-                Bucket b = read_bucket(idx);
-                results.push_back(b);
-            }
-            catch (const exception& e) {
-                cerr << "Warning: Failed to read bucket at index " << idx 
-                     << " during eviction: " << e.what() << endl;
-                // Push a dummy bucket if reading fails
-                results.push_back(Bucket(bucketCapacity));
+        // Read the entire contiguous range in one operation
+        int contiguousCount = rangeEnd - i;
+        vector<Bucket> rangeBuckets = read_bucket_physical_consecutive(startPhysical, contiguousCount);
+        
+        // Add buckets to results in their original logical order
+        for (size_t j = i; j < rangeEnd; j++) {
+            int localIndex = j - i;
+            int originalLogicalIndex = physicalIndices[j].second;
+            
+            // Find position in results where this logical index should go
+            auto pos = find_if(normalIndices.begin(), normalIndices.end(),
+                              [originalLogicalIndex](int idx) { return idx == originalLogicalIndex; });
+            if (pos != normalIndices.end()) {
+                size_t resultIndex = pos - normalIndices.begin();
+                if (resultIndex >= results.size()) {
+                    results.resize(resultIndex + 1);
+                }
+                results[resultIndex] = rangeBuckets[localIndex];
             }
         }
+        
+        i = rangeEnd;
     }
     
     return results;
