@@ -178,28 +178,12 @@ void Client::simple_batch_evict(int eviction_number, int range_power) {
     int evict_global = evict_counter[range_power];
     int height = this->L;  // tree height
 
-    // Process each level separately
+    // Process each level separately.
     for (int j = 0; j < height; j++) {
-        // For level j, logical indices run from:
-        // levelStartLogical = 2^j - 1, and there are levelSize = 2^j buckets.
         int levelSize = (1 << j);
         int levelStartLogical = (1 << j) - 1;
 
-        // Get the physical start for this level: the physical index corresponding to the first logical index.
-        int physicalStart = tree->toPhysicalIndex(levelStartLogical);
-
-        // Read the entire level in one contiguous read.
-        vector<Bucket> levelBuckets = tree->read_bucket_physical_consecutive(physicalStart, levelSize);
-        vector<int> physicalIndexForLogical(levelSize, -1);
-        for (int i = 0; i < levelSize; i++) {
-            int physicalIdx = physicalStart + i;
-            int logical = tree->toNormalIndex(physicalIdx);
-            int offset = logical - levelStartLogical; // this should be in [0, levelSize-1]
-            physicalIndexForLogical[offset] = i;
-        }
-
-        // For each t in [evict_global, evict_global + eviction_number), the target logical index is:
-        // levelStartLogical + (t mod levelSize)
+        // Determine the target logical bucket indices for eviction.
         set<int> targetLogicalIndices;
         for (int t = evict_global; t < evict_global + eviction_number; t++) {
             int offset = t % levelSize;
@@ -207,12 +191,27 @@ void Client::simple_batch_evict(int eviction_number, int range_power) {
             targetLogicalIndices.insert(targetLogical);
         }
 
-        // For each target logical bucket, look it up in contiguous array 
+        // Map these logical indices to their physical indices.
+        vector<int> targetPhysicalIndices;
+        for (int logical : targetLogicalIndices) {
+            int phys = tree->toPhysicalIndex(logical);
+            targetPhysicalIndices.push_back(phys);
+        }
+
+        // Compute the minimum and maximum physical indices among the targets.
+        int minPhysical = *min_element(targetPhysicalIndices.begin(), targetPhysicalIndices.end());
+        int maxPhysical = *max_element(targetPhysicalIndices.begin(), targetPhysicalIndices.end());
+        int count = maxPhysical - minPhysical + 1;
+
+        // Perform one disk seek to read the contiguous range covering all target buckets.
+        vector<Bucket> buckets = tree->read_bucket_physical_consecutive(minPhysical, count);
+
+        // Process each target bucket (by computing its offset in the read buffer).
         for (int targetLogical : targetLogicalIndices) {
-            int offset = targetLogical - levelStartLogical;
-            int pos = physicalIndexForLogical[offset];
-            if (pos < 0 || pos >= levelSize) continue;
-            Bucket &bucket = levelBuckets[pos];
+            int phys = tree->toPhysicalIndex(targetLogical);
+            int pos = phys - minPhysical;
+            if (pos < 0 || pos >= (int)buckets.size()) continue;
+            Bucket &bucket = buckets[pos];
             for (const block &blk : bucket.getBlocks()) {
                 if (!blk.data.empty()) {
                     try {
@@ -230,15 +229,14 @@ void Client::simple_batch_evict(int eviction_number, int range_power) {
             }
         }
 
-        // For each target logical bucket, reassemble the bucket from the stash.
+        // Reassemble each target bucket from the stash.
         for (int targetLogical : targetLogicalIndices) {
-            int offset = targetLogical - levelStartLogical;
-            int pos = physicalIndexForLogical[offset];
-            if (pos < 0 || pos >= levelSize) continue;
-
+            int phys = tree->toPhysicalIndex(targetLogical);
+            int pos = phys - minPhysical;
+            if (pos < 0 || pos >= (int)buckets.size()) continue;
             Bucket newBucket(bucket_capacity);
             int prefix_bits = (height - 1) - j;
-            int targetOffset = targetLogical - levelStartLogical;  // This is our r.
+            int targetOffset = targetLogical - levelStartLogical;
             for (auto it = stash.begin(); it != stash.end(); ) {
                 int tag = it->second.paths[range_power];
                 int bucket_index = (prefix_bits >= 0 ? (tag >> prefix_bits) : tag);
@@ -260,21 +258,18 @@ void Client::simple_batch_evict(int eviction_number, int range_power) {
                 block encrypted_blk = encryptBlock(b, key);
                 encryptedBucket.addBlock(encrypted_blk);
             }
-            levelBuckets[pos] = encryptedBucket;
+            buckets[pos] = encryptedBucket;
         }
 
+        // Write the modified range back with one contiguous write.
         string levelData;
-        levelData.resize(levelSize * bucket_char_size, ' ');
-        for (int i = 0; i < levelSize; i++) {
-            string serialized = serialize_bucket(levelBuckets[i]);
+        levelData.resize(count * bucket_char_size, ' ');
+        for (int i = 0; i < count; i++) {
+            string serialized = serialize_bucket(buckets[i]);
             memcpy(&levelData[i * bucket_char_size], serialized.data(), bucket_char_size);
         }
-
-        tree->writeContiguousLevel(physicalStart, levelSize, levelData);
+        tree->writeContiguousLevel(minPhysical, count, levelData);
     }
-
-    //int total_leaves = 1 << (L - 1);
-    //evict_counter[range_power] = (evict_counter[range_power] + eviction_number) % total_leaves;
 }
 
 
