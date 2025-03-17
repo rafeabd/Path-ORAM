@@ -111,7 +111,6 @@ Bucket ORAM::read_bucket(int logical_index) {
 }
 
 Bucket ORAM::read_bucket_physical(int physicalIndex) {
-    // Calculate the byte offset for the desired node.
     //cout << "logical index in read_bucket" << logical_index << endl;
     tree_file.clear();
     const std::streamoff offset = physicalIndex * bucket_char_size;
@@ -137,10 +136,10 @@ Bucket ORAM::read_bucket_physical(int physicalIndex) {
 
 vector<Bucket> ORAM::read_bucket_physical_consecutive(int physicalIndex, int range) {
     vector<Bucket> results;
-    results.reserve(range); // Reserve space for efficiency
+    results.reserve(range); 
     if (range <= 0) return results;
     
-    // Determine level information
+    // Determine level info
     int level = 0;
     int temp = physicalIndex + 1;
     while (temp >>= 1) {
@@ -150,12 +149,9 @@ vector<Bucket> ORAM::read_bucket_physical_consecutive(int physicalIndex, int ran
     int levelSize = (1 << level);
     int positionInLevel = physicalIndex - levelStart;
     
-    // Ensure we don't try to read more buckets than exist at this level
     range = min(range, levelSize);
     
-    // Set max chunk size (number of buckets per read)
-    // Using a single bucket size as reference, but allowing for multiple buckets in one read
-    int maxChunkSize = 64; // This means we'll read up to 1MB at a time (64 * 16384 bytes)
+    int maxChunkSize = 64; 
     
     int remaining = range;
     int currentPos = positionInLevel;
@@ -164,7 +160,7 @@ vector<Bucket> ORAM::read_bucket_physical_consecutive(int physicalIndex, int ran
         int chunkSize = min(remaining, maxChunkSize);
         int continuousBucketsToRead = min(chunkSize, levelSize - currentPos);
         
-        // Read continuous portion
+        // Read continuous 
         vector<char> buffer(continuousBucketsToRead * bucket_char_size);
         
         tree_file.clear();
@@ -187,14 +183,12 @@ vector<Bucket> ORAM::read_bucket_physical_consecutive(int physicalIndex, int ran
                                     " bytes, Got: " + to_string(tree_file.gcount()) + " bytes");
         }
         
-        // Process the continuous portion
         for (int i = 0; i < continuousBucketsToRead; i++) {
             char* bucketStart = buffer.data() + (i * bucket_char_size);
             string bucket_data(bucketStart, bucket_char_size);
             results.push_back(deserialize_bucket(bucket_data));
         }
-        
-        // Update tracking variables for next chunk
+
         remaining -= continuousBucketsToRead;
         currentPos = (currentPos + continuousBucketsToRead) % levelSize;
     }
@@ -205,39 +199,32 @@ vector<Bucket> ORAM::read_bucket_physical_consecutive(int physicalIndex, int ran
 
 
 vector<Bucket> ORAM::readBucketsAndClear(int level, int start_index, int count) {
-    // Calculate level parameters
     int levelStart = (1 << level) - 1;
     int levelSize = (1 << level);
     
     vector<Bucket> results;
     
-    // Collect the unique indices that need to be read
     vector<int> normalIndices;
     for (int t = start_index; t < start_index + count; ++t) {
         int offset = t % levelSize;
         int normalIndex = levelStart + offset;
         
-        // Check for duplicates and bounds
         if (normalIndex < num_buckets && 
             find(normalIndices.begin(), normalIndices.end(), normalIndex) == normalIndices.end()) {
             normalIndices.push_back(normalIndex);
         }
     }
     
-    // Process indices in chunks of 64 to minimize seeks while ensuring reliability
     const int CHUNK_SIZE = 64;
     
     for (size_t i = 0; i < normalIndices.size(); i += CHUNK_SIZE) {
         size_t chunkEnd = min(i + CHUNK_SIZE, normalIndices.size());
         vector<int> chunk(normalIndices.begin() + i, normalIndices.begin() + chunkEnd);
         
-        // Sort the chunk for potentially sequential access
         sort(chunk.begin(), chunk.end());
         
-        // Process each index in the chunk
         for (int idx : chunk) {
             try {
-                // Read the bucket from disk using its logical index
                 Bucket b = read_bucket(idx);
                 results.push_back(b);
             }
@@ -258,11 +245,9 @@ void ORAM::updateBucketsAtLevel(int level, const vector<pair<int, Bucket>>& inde
     
     int levelStart = (1 << level) - 1;
     
-    // Pre-allocate vectors and avoid multiple small allocations
     vector<pair<int, string>> serializedBuckets;
     serializedBuckets.reserve(indexBucketPairs.size());
     
-    // Pre-serialize all buckets to avoid doing this inside the write loop
     for (const auto& pair : indexBucketPairs) {
         int offsetInLevel = pair.first;
         int logicalIndex = levelStart + offsetInLevel;
@@ -273,16 +258,13 @@ void ORAM::updateBucketsAtLevel(int level, const vector<pair<int, Bucket>>& inde
         serializedBuckets.emplace_back(physicalIndex, std::move(serialized));
     }
     
-    // Sort with explicit parameter types
     std::sort(serializedBuckets.begin(), serializedBuckets.end(), 
              [](const pair<int, string>& a, const pair<int, string>& b) { 
                  return a.first < b.first; 
              });
     
-    // Process all contiguous segments in one go, regardless of size
     size_t i = 0;
     while (i < serializedBuckets.size()) {
-        // Find the entire contiguous range starting at i
         size_t rangeEnd = i + 1;
         while (rangeEnd < serializedBuckets.size() && 
                serializedBuckets[rangeEnd].first == serializedBuckets[rangeEnd-1].first + 1) {
@@ -293,10 +275,8 @@ void ORAM::updateBucketsAtLevel(int level, const vector<pair<int, Bucket>>& inde
         int startPhysicalIndex = serializedBuckets[i].first;
         size_t rangeSize = rangeEnd - i;
         
-        // Allocate buffer for the entire contiguous range
         char* writeBuffer = new char[rangeSize * bucket_char_size];
         
-        // Copy serialized buckets directly to the write buffer
         size_t bufferOffset = 0;
         for (size_t k = i; k < rangeEnd; k++) {
             memcpy(writeBuffer + bufferOffset, 
@@ -305,11 +285,9 @@ void ORAM::updateBucketsAtLevel(int level, const vector<pair<int, Bucket>>& inde
             bufferOffset += bucket_char_size;
         }
         
-        // Single write with minimal overhead
         tree_file.clear();
         const std::streamoff offset = startPhysicalIndex * bucket_char_size;
         
-        // Perform the write with just one seek
         tree_file.seekp(offset, std::ios::beg);
         if (!tree_file) {
             tree_file.clear();
@@ -317,17 +295,13 @@ void ORAM::updateBucketsAtLevel(int level, const vector<pair<int, Bucket>>& inde
             tree_file.seekp(offset, std::ios::beg);
         }
         
-        // Direct buffer write is faster than string buffer
         tree_file.write(writeBuffer, rangeSize * bucket_char_size);
         
-        // Clean up the buffer
         delete[] writeBuffer;
         
-        // Move to next segment
         i = rangeEnd;
     }
     
-    // Force a flush once at the end instead of multiple times
     //tree_file.flush();
 }
 
@@ -392,12 +366,9 @@ vector<Bucket> ORAM::try_buckets_at_level(int level, int leaf, int range_power) 
     int physical_leaf = leafToPhysicalIndex(leaf);
     int level_start = (1 << level) - 1;
     int level_count = min((1 << level), num_buckets - level_start);
-    
-    // Calculate height directly from num_buckets which is guaranteed to be 2^h-1
     int height = log2(num_buckets + 1);
     int leaf_level = height - 1;
     
-    // Calculate starting physical index within the level
     int physical_index_within_level;
     
     if (level == leaf_level) {
@@ -412,13 +383,9 @@ vector<Bucket> ORAM::try_buckets_at_level(int level, int leaf, int range_power) 
         physical_index_within_level = physical_ancestor - level_start;
     }
     
-    // Ensure index is within level bounds (in case of calculation errors)
     physical_index_within_level = physical_index_within_level % level_count;
-    
-    // Convert to absolute physical index for the consecutive read
     int absolute_physical_index = level_start + physical_index_within_level;
     
-    // Read all buckets in one operation
     return read_bucket_physical_consecutive(absolute_physical_index, 1 << range_power);
 }
 
