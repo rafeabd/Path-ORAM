@@ -20,7 +20,7 @@ int main() {
     cout << "=== PATH-ORAM RANGE QUERY PERFORMANCE TEST ===" << endl;
     
     // Initial parameters
-    const int num_buckets_low = 30000; // Fixed value for buckets
+    const int num_buckets_low = 1024; // Fixed value for buckets
     int bucket_capacity = 4;
     int L = ceil(log2(num_buckets_low));
     
@@ -45,7 +45,7 @@ int main() {
     cout << "done." << endl;
 
     // Read dataset file and load data
-    string datasetPath = "/Users/rabdulali/Desktop/Path-ORAM/tests/2^15.txt";
+    string datasetPath = "/Users/rabdulali/Desktop/Path-ORAM/tests/2^10.txt";
     cout << "Loading dataset from: " << datasetPath << endl;
     
     ifstream infile(datasetPath);
@@ -80,7 +80,7 @@ int main() {
     infile.close();
 
     // Define the range query sizes using exponents: 2^1, 2^4, 2^10
-    vector<int> exponents = {1, 4, 10};
+    vector<int> exponents = {1, 2,3,4,6,8,10};
     
     // Store results for summary table
     struct QueryResult {

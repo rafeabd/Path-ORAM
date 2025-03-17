@@ -57,10 +57,12 @@ public:
     Bucket read_bucket_physical_clear(int physicalIndex);
 
     void updateBucket_physical(int physicalIndex, const Bucket &newBucket);
+    vector<Bucket> read_bucket_physical_consecutive(int physicalIndex, int range);
 
     void reopenFile();
     void flushCache();
     void updateBucketForInitialization(int logicalIndex, const Bucket &newBucket);
+    void updateBucketsAtLevel(int level, const vector<pair<int, Bucket>>& indexBucketPairs);
 
 };
 

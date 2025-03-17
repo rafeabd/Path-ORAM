@@ -220,12 +220,15 @@ void Client::simple_batch_evict(int eviction_number, int range_power) {
             target_indices.insert(t % (1 << j));
         }
         
-        // For each target bucket, fill with as many stash blocks as possible
+        // Prepare all buckets for this level before writing
+        vector<pair<int, Bucket>> levelBuckets;
+        
+        // For each target bucket, prepare the encrypted bucket
         for (int r : target_indices) {
             Bucket newBucket(bucket_capacity);
             vector<int> candidate_ids;
             
-            // Find all stash blocks whose path's prefix matches - if block is in buckets path
+            // Find all stash blocks whose path's prefix matches
             int prefix_bits = (height - 1) - j;
             for (auto &entry : stash) {
                 int block_id = entry.first;
@@ -238,7 +241,7 @@ void Client::simple_batch_evict(int eviction_number, int range_power) {
                 }
             }
             
-            //sort(candidate_ids.begin(), candidate_ids.end());
+            // Fill the bucket with candidate blocks
             for (int block_id : candidate_ids) {
                 if (stash.find(block_id) == stash.end()) continue;
                 block &blk = stash[block_id];
@@ -247,18 +250,23 @@ void Client::simple_batch_evict(int eviction_number, int range_power) {
                     stash.erase(block_id);
                 }
                 if (!newBucket.hasSpace()) {
-                    break; 
+                    break;
                 }
             }
             
-            // encrypt bucket
+            // Encrypt bucket
             Bucket encryptedBucket(bucket_capacity);
             for (block &blk : newBucket.getBlocks()) {
                 block encrypted_blk = encryptBlock(blk, key);
                 encryptedBucket.addBlock(encrypted_blk);
             }
-            tree->updateBucketAtLevel(j, r, encryptedBucket);
+            
+            // Add to level buckets
+            levelBuckets.push_back(make_pair(r, encryptedBucket));
         }
+        
+        // Batch update all buckets at this level
+        tree->updateBucketsAtLevel(j, levelBuckets);
     }
 }
 
