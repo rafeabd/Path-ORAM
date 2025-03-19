@@ -8,7 +8,7 @@
 #include <vector>
 #include <set>
 #include <unistd.h>
-#include <fcntl.h>  // Add this at the top with other includes
+#include <fcntl.h>  
 
 using namespace std;
 
@@ -85,7 +85,6 @@ int ORAM::parent(int i) {
 }
 
 Bucket ORAM::read_bucket(int logical_index) {
-    // Calculate the byte offset for the desired node.
     //cout << "logical index in read_bucket" << logical_index << endl;
 
     tree_file.clear();
@@ -197,7 +196,7 @@ vector<Bucket> ORAM::read_bucket_physical_consecutive(int physicalIndex, int ran
 }
 
 
-
+//doesn't actually clear, we don't want to.
 vector<Bucket> ORAM::readBucketsAndClear(int level, int start_index, int count) {
     int levelStart = (1 << level) - 1;
     int levelSize = (1 << level);
@@ -231,7 +230,6 @@ vector<Bucket> ORAM::readBucketsAndClear(int level, int start_index, int count) 
             catch (const exception& e) {
                 cerr << "Warning: Failed to read bucket at index " << idx 
                      << " during eviction: " << e.what() << endl;
-                // Push a dummy bucket if reading fails
                 results.push_back(Bucket(bucketCapacity));
             }
         }
@@ -348,13 +346,11 @@ void ORAM::updateBucketForInitialization(int logicalIndex, const Bucket &newBuck
 void ORAM::updateBucketAtLevel(int level, int index_in_level, const Bucket &newBucket) {
     int levelStart = (1 << level) - 1;
     int levelCount = (1 << level);
-    // Ensure the index is within bounds
     if (index_in_level < 0 || index_in_level >= levelCount) {
         throw std::out_of_range("Bucket index out of range for the specified level");
     }
     
     int normalIndex = levelStart + index_in_level;
-    // Ensure we don't try to update beyond the tree bounds
     if (normalIndex >= num_buckets) {
         throw std::out_of_range("Bucket index exceeds tree size");
     }
@@ -414,26 +410,22 @@ block ORAM::writeBlockToPath(const block &b, int logicalLeaf, vector<unsigned ch
             blocks_in_bucket = decryptBlock(blocks_in_bucket, key);
         }
         
-        // Try to add the block to this bucket
         if (currentBucket.addBlock(b)) {
-            // Re-encrypt all blocks
             for (block &blocks_in_bucket: currentBucket.blocks){
                 blocks_in_bucket = encryptBlock(blocks_in_bucket, key);
             }
-            
-            // Update the bucket
             updateBucketForInitialization(logicalIndex, currentBucket);
             
-            // Return an empty (dummy) block to indicate success
+            // dummy for success
             return block(-1, "", true, vector<int>{});
         }
     }
     
-    // Block couldn't be added to any bucket in the path
+    // failed, return noraml bucket
     return b;
 }
 
-// Write a contiguous block of buckets starting at a given physical index.
+// write the whole thing at once
 void ORAM::writeContiguousLevel(int physicalStart, int count, const string &data) {
     tree_file.clear();
     std::streamoff offset = physicalStart * bucket_char_size;

@@ -32,11 +32,9 @@ Client::Client(vector<pair<int,string>> data_to_add, int bucket_capacity, int ma
     
     int target_buckets = ceil(num_blocks / 4.0);
     int height = ceil(log2(target_buckets + 1));
-    
-    // Set num_buckets to exactly 2^h-1 for a perfect full binary tree
     this->num_buckets = (1 << height) - 1;
     
-    this->L = height;  // L should be the height of the tree
+    this->L = height;  
     this->max_range = max_range;
     this->bucket_capacity = bucket_capacity;
     this->num_trees = ceil(log2(max_range));
@@ -142,7 +140,7 @@ tuple<vector<block>, int> Client::simple_read_range(int range_power, int id) {
                             //cout << "decrypted block" << endl;
                             //decrypted_b.print_block();
                             
-                            // Only add non-dummy blocks in our range to the result
+                            // Only add non-dummy blocks in range to the result
                             if (!decrypted_b.dummy && decrypted_b.id >= range.first && decrypted_b.id < range.second) {
                                 auto it = find_if(result.begin(), result.end(), [&](const block &blk) {
                                     return blk.id == decrypted_b.id;
@@ -171,14 +169,12 @@ tuple<vector<block>, int> Client::simple_read_range(int range_power, int id) {
     return make_tuple(result, p_prime);
 }
 
-// Improved simple_batch_evict: one disk seek per level for reading and one for writing
 void Client::simple_batch_evict(int eviction_number, int range_power) {
     unordered_map<int, block> &stash = stashes[range_power];
     ORAM* tree = oram_trees[range_power];
     int evict_global = evict_counter[range_power];
-    int height = this->L;  // tree height
+    int height = this->L;  
 
-    // Process each level separately.
     for (int j = 0; j < height; j++) {
         int levelSize = (1 << j);
         int levelStartLogical = (1 << j) - 1;
@@ -198,15 +194,14 @@ void Client::simple_batch_evict(int eviction_number, int range_power) {
             targetPhysicalIndices.push_back(phys);
         }
 
-        // Compute the minimum and maximum physical indices among the targets.
+        // Compute the minimum and maximum physical indices for one disc seek
         int minPhysical = *min_element(targetPhysicalIndices.begin(), targetPhysicalIndices.end());
         int maxPhysical = *max_element(targetPhysicalIndices.begin(), targetPhysicalIndices.end());
         int count = maxPhysical - minPhysical + 1;
 
-        // Perform one disk seek to read the contiguous range covering all target buckets.
         vector<Bucket> buckets = tree->read_bucket_physical_consecutive(minPhysical, count);
 
-        // Process each target bucket (by computing its offset in the read buffer).
+        // Using offset in the read buffer.
         for (int targetLogical : targetLogicalIndices) {
             int phys = tree->toPhysicalIndex(targetLogical);
             int pos = phys - minPhysical;
@@ -229,7 +224,7 @@ void Client::simple_batch_evict(int eviction_number, int range_power) {
             }
         }
 
-        // Reassemble each target bucket from the stash.
+        // make buckets from the stash.
         for (int targetLogical : targetLogicalIndices) {
             int phys = tree->toPhysicalIndex(targetLogical);
             int pos = phys - minPhysical;
@@ -261,7 +256,7 @@ void Client::simple_batch_evict(int eviction_number, int range_power) {
             buckets[pos] = encryptedBucket;
         }
 
-        // Write the modified range back with one contiguous write.
+        // Write the entire thing with one write
         string levelData;
         levelData.resize(count * bucket_char_size, ' ');
         for (int i = 0; i < count; i++) {
@@ -274,7 +269,6 @@ void Client::simple_batch_evict(int eviction_number, int range_power) {
 
 
 vector<block> Client::simple_access(int id, int range, int op, vector<string> data) {
-    // Determine i for 2^(i-1) < range <= 2^i
     int i = -1;
     for (int c = 0; c < max_range; c++) {
         if (range > (1 << (c-1)) && range <= (1 << c)) {
@@ -428,8 +422,7 @@ int Client::getRandomLeafInRange(int start, int range_size) {
     }
     unsigned int random_value;
     memcpy(&random_value, buf, sizeof(random_value));
-    
-    // Use L instead of recalculating height
+
     int leaf_level = L - 1;
     
     // bit reverse
@@ -440,10 +433,9 @@ int Client::getRandomLeafInRange(int start, int range_size) {
         temp_start >>= 1;
     }
     
-    // Add a random offset within range_size to the bit-reversed leaf
     int new_leaf_br = (start_br + (random_value % range_size)) % (1 << leaf_level);
     
-    // Bit-reverse back to get the regular leaf index
+    // Bit-reverse back 
     int new_leaf = 0;
     int temp_new = new_leaf_br;
     for (int i = 0; i < leaf_level; i++) {
@@ -506,7 +498,6 @@ void Client::print_tree_state(int tree_index, int max_level) {
         int level_end = (1 << (level + 1)) - 1;
         for (int i = level_start; i < level_end && i < tree->num_buckets; i++) {
             cout << "  Bucket " << i << " (physical): ";
-            // Convert to normal index to read logically
             int normal_idx = tree->toNormalIndex(i);
             int physical_index = toPhysicalIndex(normal_idx);
             Bucket bucket = tree->read_bucket(normal_idx);
@@ -529,7 +520,6 @@ void Client::print_tree_state(int tree_index, int max_level) {
 }
 
 void Client::printLogicalTreeState(int tree_index, int max_level, bool decrypt) {
-    // Validate tree_index.
     if (tree_index < 0 || tree_index >= oram_trees.size()) {
         cout << "Invalid tree index: " << tree_index << endl;
         return;

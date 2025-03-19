@@ -80,7 +80,7 @@ vector<unsigned char> encryptData(const vector<unsigned char>& key, const vector
     }
     
     // Output buffer, randomized IV+cipher
-    vector<unsigned char> ciphertext(iv); // Prepend IV.
+    vector<unsigned char> ciphertext(iv); 
     ciphertext.resize(iv_length + plaintext.size() + EVP_CIPHER_block_size(cipher));
     
     int len;
@@ -118,13 +118,9 @@ vector<unsigned char> decryptData(const vector<unsigned char>& key, const vector
     // Extract IV
 
     /*
-    // creating stringstream object
     stringstream ss;
-    // Insert every character of vector into stream
     for (auto it = ciphertext.begin(); it != ciphertext.end(); it++)
         ss << *it;
-
-    // converts stream contents into a string
     cout << ss.str() << endl;
     */
     vector<unsigned char> iv(ciphertext.begin(), ciphertext.begin() + iv_length);
@@ -161,14 +157,12 @@ vector<unsigned char> decryptData(const vector<unsigned char>& key, const vector
     return plaintext;
 }
 
-// Serialize block into string format
+// Serialize
 string serializeBlock(block &b) {
     //b.print_block();
     ostringstream oss;
-    // Serialize each field (consider using fixed-width formatting for id and paths if needed)
     oss << b.id << "|" << (b.dummy ? "1" : "0") << "|";
     
-    // Serialize the paths vector
     for (size_t i = 0; i < b.paths.size(); i++) {
         oss << b.paths[i];
         if (i < b.paths.size() - 1) {
@@ -177,12 +171,9 @@ string serializeBlock(block &b) {
     }
     oss << "|";
     
-    // Pad the data field to a fixed length (e.g., 30 characters)
     string paddedData = b.data;
     //paddedData.resize(30, ' ');
     oss << paddedData;
-    
-    // Now ensure the entire block string is fixed-size (e.g., 128 characters)
     const size_t BLOCK_SIZE = 2020;
     string serialized = oss.str();
     
@@ -195,20 +186,17 @@ string serializeBlock(block &b) {
 }
 
 
-// Deserialize string back into block
+// Deserialize 
 block deserializeBlock(const string &s) {
     istringstream iss(s);
     string token;
-    
-    // Parse id
+
     getline(iss, token, '|');
     int id = stoi(token);
     
-    // Parse dummy
     getline(iss, token, '|');
     bool dummy = (token == "1");
     
-    // Parse paths vector
     getline(iss, token, '|');
     vector<int> paths;
     if (!token.empty()) {
@@ -219,11 +207,9 @@ block deserializeBlock(const string &s) {
         }
     }
     
-    // Parse data
     string data;
     getline(iss, data);
     
-    // Remove padding spaces
     while (!data.empty() && data.back() == ' ') {
         data.pop_back();
     }
@@ -266,14 +252,13 @@ Bucket deserialize_bucket(string read_string){
     const size_t blockSize = 4096;
     const size_t expectedSize = 16384;
     
-    // Check that the input string is the expected size.
     if (read_string.size() != expectedSize) {
         cout << "read_string: " << read_string.size() << endl;
         throw runtime_error("Bucket data must be exactly 512 characters.");
     }
     
     vector<block> blocks;
-    // Loop over the string in increments of 320.
+    // Loop over the string in increments of 4096.
     for (size_t i = 0; i < expectedSize; i += blockSize) {
         string blockStr = read_string.substr(i, blockSize);
         block block_being_deserialized = block(0,blockStr,false,vector<int>{});

@@ -24,22 +24,18 @@ using namespace std;
 Client::Client(vector<pair<int,string>> data_to_add, int bucket_capacity, int max_range) {
     this->key = generateEncryptionKey(64);
     this->num_blocks = data_to_add.size();
-
-    //int height = ceil(log2(num_blocks + 1));
-    //this->num_buckets = (1 << height) - 1;
     
-    int target_buckets = ceil(num_blocks / 4.0);
+    int target_buckets = ceil(num_blocks / 4.0); //this sets the ratio of buckets to blocks, can play around with
     int height = ceil(log2(target_buckets + 1));
     
-    // Set num_buckets to exactly 2^h-1 for a perfect full binary tree
     this->num_buckets = (1 << height) - 1;
     
-    this->L = height;  // L should be the height of the tree
+    this->L = height;  
     this->max_range = max_range;
     this->bucket_capacity = bucket_capacity;
     this->num_trees = ceil(log2(max_range));
 
-    // Initialize stashes and position maps for all trees before processing any data
+    // Initialize stashes and position maps 
     for (int l = 0; l < num_trees; l++) {
         stashes.push_back(unordered_map<int, block>());
         position_maps.push_back(map<int, int>());
@@ -135,12 +131,10 @@ tuple<vector<block>, int> Client::simple_read_range(int range_power, int id) {
                 for (block &b : bucket.getBlocks()) {
                     if (!b.data.empty()) {
                         try {
-                            // Decrypt the block 
                             block decrypted_b = decryptBlock(b, key);
                             //cout << "decrypted block" << endl;
                             //decrypted_b.print_block();
                             
-                            // Only add non-dummy blocks in our range to the result
                             if (!decrypted_b.dummy && decrypted_b.id >= range.first && decrypted_b.id < range.second) {
                                 auto it = find_if(result.begin(), result.end(), [&](const block &blk) {
                                     return blk.id == decrypted_b.id;
@@ -172,7 +166,6 @@ tuple<vector<block>, int> Client::simple_read_range(int range_power, int id) {
 void Client::simple_batch_evict(int eviction_number, int range_power) {
     unordered_map<int, block> &stash = stashes[range_power];
     
-    // Print stash at the start of simple_batch_evict
     //cout << "simple_batch_evict: stash for range_power " << range_power << " contains:" << endl;
     //for (const auto &entry : stash) {
     //    cout << "  Block id: " << entry.first << ", data: " << entry.second.data << endl;
@@ -184,19 +177,16 @@ void Client::simple_batch_evict(int eviction_number, int range_power) {
 
     //cout << "############################################################" << endl;
     //print_stashes();
-    // Read and clear buckets on the eviction paths into stash
+    // Read buckets on the eviction paths into stash
     for (int j = 0; j < height; j++) {
         vector<Bucket> buckets = tree->readBucketsAndClear(j, evict_global, eviction_number);
         for (Bucket &bucket : buckets) {
             for (const block &blk : bucket.getBlocks()) {
                 if (!blk.data.empty()) {
                     try {
-                        // Decrypt the block 
                         block decrypted_blk = decryptBlock(blk, key);
                         
-                        // Only process non-dummy blocks
                         if (!decrypted_blk.dummy) {
-                            // Move real block to stash if not already present
                             if (stash.find(decrypted_blk.id) == stash.end()) {
                                 stash[decrypted_blk.id] = decrypted_blk;
                             }
@@ -213,21 +203,16 @@ void Client::simple_batch_evict(int eviction_number, int range_power) {
     //cout << "############################################################" << endl;
     // Evict from stash: place blocks into new buckets from bottom level up, level by level
     for (int j = height - 1; j >= 0; --j) {
-        // Determine target bucket indices at level j for this eviction range
         set<int> target_indices;
         for (int t = evict_global; t < evict_global + eviction_number; ++t) {
             target_indices.insert(t % (1 << j));
         }
-        
-        // Prepare all buckets for this level before writing
         vector<pair<int, Bucket>> levelBuckets;
         
-        // For each target bucket, prepare the encrypted bucket
         for (int r : target_indices) {
             Bucket newBucket(bucket_capacity);
             vector<int> candidate_ids;
             
-            // Find all stash blocks whose path's prefix matches
             int prefix_bits = (height - 1) - j;
             for (auto &entry : stash) {
                 int block_id = entry.first;
@@ -240,7 +225,6 @@ void Client::simple_batch_evict(int eviction_number, int range_power) {
                 }
             }
             
-            // Fill the bucket with candidate blocks
             for (int block_id : candidate_ids) {
                 if (stash.find(block_id) == stash.end()) continue;
                 block &blk = stash[block_id];
@@ -252,9 +236,7 @@ void Client::simple_batch_evict(int eviction_number, int range_power) {
                     break;
                 }
             }
-            
-            // Encrypt bucket
-            Bucket encryptedBucket(bucket_capacity);
+                        Bucket encryptedBucket(bucket_capacity);
             for (block &blk : newBucket.getBlocks()) {
                 block encrypted_blk = encryptBlock(blk, key);
                 encryptedBucket.addBlock(encrypted_blk);
@@ -270,7 +252,6 @@ void Client::simple_batch_evict(int eviction_number, int range_power) {
 }
 
 vector<block> Client::simple_access(int id, int range, int op, vector<string> data) {
-    // Determine i for 2^(i-1) < range <= 2^i
     int i = -1;
     for (int c = 0; c < max_range; c++) {
         if (range > (1 << (c-1)) && range <= (1 << c)) {
@@ -313,7 +294,6 @@ vector<block> Client::simple_access(int id, int range, int op, vector<string> da
                 return a.id < b.id;
             });
             
-            // Update path tags for tree i
             for (block &b : blocks) {
                 if (b.id >= a_prime && b.id < a_prime + (1 << i)) {
                     b.paths[i] = getRandomLeafInRange(p_prime, 1<<i);
@@ -425,7 +405,6 @@ int Client::getRandomLeafInRange(int start, int range_size) {
     unsigned int random_value;
     memcpy(&random_value, buf, sizeof(random_value));
     
-    // Use L instead of recalculating height
     int leaf_level = L - 1;
     
     // bit reverse
@@ -436,10 +415,9 @@ int Client::getRandomLeafInRange(int start, int range_size) {
         temp_start >>= 1;
     }
     
-    // Add a random offset within range_size to the bit-reversed leaf
     int new_leaf_br = (start_br + (random_value % range_size)) % (1 << leaf_level);
     
-    // Bit-reverse back to get the regular leaf index
+    // Bit-reverse back 
     int new_leaf = 0;
     int temp_new = new_leaf_br;
     for (int i = 0; i < leaf_level; i++) {
@@ -502,7 +480,6 @@ void Client::print_tree_state(int tree_index, int max_level) {
         int level_end = (1 << (level + 1)) - 1;
         for (int i = level_start; i < level_end && i < tree->num_buckets; i++) {
             cout << "  Bucket " << i << " (physical): ";
-            // Convert to normal index to read logically
             int normal_idx = tree->toNormalIndex(i);
             int physical_index = toPhysicalIndex(normal_idx);
             Bucket bucket = tree->read_bucket(normal_idx);
