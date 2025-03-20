@@ -15,7 +15,7 @@
 
 ## Overview
 
-This project implements a Path ORAM (Oblivious RAM) system, providing secure data access with hidden access patterns. It features a complete client-server architecture with encryption support and is designed to be extended to rORAM.
+This project implements a Path ORAM (Oblivious RAM) system with an extension to rORAM, providing secure data access with hidden access patterns. It features a complete client-server architecture with encryption support, and in addition to this, builds on this implementing rORAM.
 
 ## Features
 
