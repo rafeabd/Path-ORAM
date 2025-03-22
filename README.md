@@ -73,23 +73,6 @@ path-oram/
 
 ## Installation
 
-1. Clone the repository:
-```bash
-git clone https://github.com/username/path-oram.git
-cd path-oram
-```
-
-2. Create build directory:
-```bash
-mkdir build
-cd build
-```
-
-3. Build the project:
-```bash
-cmake ..
-make
-```
 
 ## Set Up
 
