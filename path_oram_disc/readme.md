@@ -13,7 +13,7 @@ This project implements a Path ORAM (Oblivious RAM) system with client-server ar
 
 ## Project Structure
 ```
-path-oram/
+path_oram_disc/
 ├── include/
 │   ├── block.h
 │   ├── bucket.h
@@ -30,8 +30,9 @@ path-oram/
 │   ├── encryption.cpp
 │   ├── main.cpp
 │   └── server.cpp
-└── tests/
-    └── data/
+├── tests/
+│   └── data/
+└── tree/
 ```
 
 ## Requirements
@@ -39,93 +40,52 @@ path-oram/
 - OpenSSL library
 - CMake 3.10 or higher
 
-## Building
-```bash
-mkdir build
-cd build
-cmake ..
-make
-```
+## Set-Up
+## Path Oram - /Path-ORAM/path_oram_disc/main.cpp
+The setup for the numbers of buckets and size of range query is on **main.cpp**
 
-## Usage
+To set the total number of buckets, you simply change the following value.
+line 23:
 ```cpp
-// Initialize the system
-vector<unsigned char> key = generateEncryptionKey(32);
-BucketHeap oram_tree(num_buckets, bucket_capacity, key);
-Server server(num_blocks, bucket_capacity, oram_tree);
-Client client(num_blocks, &server, key);
-
-// Write data
-client.access(1, block_id, "data");
-
-// Read data
-block result = client.access(0, block_id, "");
-
-// Perform range query
-vector<block> results = client.range_query(start_id, end_id);
+//This would be interpreted at 2^22 buckets
+    const int num_buckets_low = pow(2,22);
 ```
 
-## Key Components
+To set the source file you set the file path for your system. Set this according to your system, such as Linux, Mac, or Windows.
+line 50:
+```cpp
+// Change this to the appropriate file path for your system
+    string datasetPath = "/mnt/c/Users/Admin/Documents/Path_ORAM/tests/2^22.txt"; //Windows Subsystem for Linux 
+```
 
-### Block
-Represents the fundamental data unit in the ORAM system. Each block contains:
-- Unique identifier
-- Target leaf position
-- Data content
-- Dummy flag
+line 85:
+This sets the range query sizes you would like to perform.
+```cpp
+// Define the range query sizes using exponents: 2^1, 2^4, 2^10
+    vector<int> exponents = {1,2,3,4,5,6,7,8,9,10,11,12,13,14};
+```
 
-### Bucket
-Container for blocks in the ORAM tree:
-- Fixed capacity
-- Block management
-- Dummy block handling
+## Building
 
-### BucketHeap
-Implements the binary tree structure:
-- Path management
-- Bucket organization
-- Tree operations
+To build your Path ORAM tree, you simply need to do following sequence of commands:
+```cpp
+    cd path_oram_disc
+```
+```cpp
+    make
+```
+```cpp
+    ./executable/testing
+```
 
-### Client
-Handles client-side operations:
-- Position map management
-- Stash handling
-- Access operations
-- Path retrieval/writing
+Your Path ORAM tree will be built in the tree folder, and the result should be shown on terminal
 
-### Server
-Manages server-side operations:
-- ORAM tree maintenance
-- Path retrieval
-- Bucket updates
+## Common issue
 
-## Security Features
-- AES-256-CBC encryption
-- Secure random number generation
-- Access pattern hiding
-- Dummy block padding
-
-## Performance
-- Access Time: O(log N)
-- Space Overhead: O(N)
-- Stash Size: O(log N)
-
-## Extending to rORAM
-The codebase includes preparation for rORAM extension:
-- Hierarchical storage support
-- Access pattern tracking
-- Background operations
-- Write buffer management
-
-## Contributing
-1. Fork the repository
-2. Create your feature branch
-3. Commit your changes
-4. Push to the branch
-5. Create a Pull Request
-
-## License
-[MIT License](LICENSE)
-
-## Contact
-For questions and support, please open an issue in the repository.
+When first running path_oram_disc, assuming you make, you may encounter the following issue:
+```cpp
+    terminate called after throwing an instance of 'std::runtime_error'
+    what():  Failed to reopen file
+    Aborted (core dumped)
+```
+This is likely due to one of two issues, either your file path is incorrect for your system or you are missing a tree folder in path_oram_disc. Resolving these issues should allow for it to build without issues.

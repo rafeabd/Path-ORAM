@@ -20,7 +20,10 @@ int main() {
     cout << "=== PATH-ORAM RANGE QUERY PERFORMANCE TEST ===" << endl;
     
     // Initial parameters
-    const int num_buckets_low = 1024; // Fixed value for buckets
+
+    //Set this to the total size of your database
+    const int num_buckets_low = pow(2,10); 
+
     int bucket_capacity = 4;
     int L = ceil(log2(num_buckets_low));
     
@@ -45,7 +48,10 @@ int main() {
     cout << "done." << endl;
 
     // Read dataset file and load data
-    string datasetPath = "/Users/rabdulali/Desktop/Path-ORAM/tests/2^10.txt";
+    
+    //Update this file path for your computer, and ensure it's for the correct database
+    string datasetPath = "/mnt/c/Users/Roman/Documents/CSE108cProject/Path-ORAM/tests/2^10.txt"; 
+
     cout << "Loading dataset from: " << datasetPath << endl;
     
     ifstream infile(datasetPath);
