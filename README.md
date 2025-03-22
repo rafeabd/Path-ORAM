@@ -1,18 +1,5 @@
 # Path ORAM & rORAM Implementation
 
-## Table of Contents
-- [Overview](#overview)
-- [Features](#features)
-- [Project Structure](#project-structure)
-- [Requirements](#requirements)
-- [Installation](#installation)
-- [Set-Up](#setup)
-- [Components](#components)
-- [Security](#security)
-- [Performance](#performance)
-- [rORAM Extension](#roram-extension)
-- [Contributing](#contributing)
-
 ## Overview
 
 Oblivious RAM (ORAM) protocols address the fundamental challenge of hiding access patterns to
@@ -45,24 +32,16 @@ queries while maintaining obliviousness
 
 ```
 path-oram/
-├── include/
-│   ├── block.h          # Block structure definitions
-│   ├── bucket.h         # Bucket management
-│   ├── bst.h            # Binary tree implementation
-│   ├── client.h         # Client operations
-│   ├── config.h         # System configuration
-│   ├── encryption.h     # Encryption utilities
-│   └── server.h         # Server operations
-├── src/
-│   ├── block.cpp
-│   ├── bucket.cpp
-│   ├── bst.cpp
-│   ├── client.cpp
-│   ├── encryption.cpp
-│   ├── main.cpp
-│   └── server.cpp
-└── tests/
-    └── data/
+├── altORAMs/
+│   ├── path_oram
+│   └── rORAM
+│
+├── path_oram_disc/
+│
+├── rORAM_paper/
+│
+├── tests/
+└── README.md
 ```
 
 ## Requirements
@@ -71,18 +50,18 @@ path-oram/
 * OpenSSL library
 * CMake 3.10 or higher
 
-## Installation
-
-
-## Set Up
-
-### Basic Operations
+## Basic Operations & Components
 The usage of Path ORAM and rORAM provides a very similar setup, with there only being slight differences between both forms. More in depth descriptions are in their respective folders.
 
+For our *Path ORAM* implementation that was used for our testing, please navigate to **path_oram_disc** folder.
 
+For our *rORAM* implementation that was used for our testing, please navigate to **rORAM_paper** folder.
 
-## Components
+Implementations which are more experimental, and not officially apart of our project, are in the **altORAMs** folder. This include a regular Path ORAM that doesn't operate on disc and a rORAM that uses a technique we created called "chunked eviction" is in this folder.
 
+More in depth information regarding the theory behind our implementations is available to read on our final report regarding the development of this program, please refer to the **reports** folder.
+
+## Basic Components
 ### Block
 The fundamental data unit containing:
 * Unique identifier

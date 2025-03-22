@@ -1,7 +1,0 @@
-Notes:
-	-encrypted bucket is 512 characters.
-	-encrypted block is 128.
-	-serializing a bucket is only valid for after the blocks have
-		been encrypted because serializing a bucket only 
-		accounts for the data of the block, which is the only
-		field that matters after serialization.
