@@ -77,71 +77,9 @@ path-oram/
 ## Set Up
 
 ### Basic Operations
-The usage of Path ORAM and rORAM provides a very similar setup, with there only being slight differences between both forms.
-
-## Path Oram - /Path-ORAM/path_oram_disc/main.cpp
-The setup for the numbers of buckets and size of range query is on **main.cpp**
-
-To set the total number of buckets, you simply change the following value.
-line 23:
-```cpp
-//This would be interpreted at 2^22 buckets
-    const int num_buckets_low = pow(2,22);
-```
-
-To set the source file you set the file path for your system. Set this according to your system, such as Linux, Mac, or Windows.
-line 50:
-```cpp
-// Change this to the appropriate file path for your system
-    string datasetPath = "/mnt/c/Users/Admis/Documents/Path_ORAM/tests/2^22.txt"; //Windows Subsystem for Linux
-```
-
-line 85:
-This sets the range query sizes you would like to perform.
-```cpp
-// Define the range query sizes using exponents: 2^1, 2^4, 2^10
-    vector<int> exponents = {1,2,3,4,5,6,7,8,9,10,11,12,13,14};
-```
-
-## rORAM - /Path-ORAM/rORAM/main.cpp
-The setup for the numbers of buckets and size of range query is on **main.cpp**
-
-To set the total number of buckets, you simply change the following value.
-line 156:
-```cpp
-//This would be interpreted at 2^22 buckets
-    const int num_buckets_low = pow(2,22);
-```
-
-line 160:
-This sets the range query sizes you would like to perform.
-```cpp
-// Define the range query sizes using exponents: 2^1, 2^4, 2^10
-    // Range query sizes to test: 2^1, 2^4, 2^10, 2^14
-    const vector<int> range_sizes = {
-        1 << 1,  // 2^1 = 2
-        1 << 2,
-        1 << 3,
-        1 << 4,  // 2^4 = 16
-```
-
-Set the max range of your range
-line 190:
-```cpp
-// Find max range needed (the largest of our test range sizes)
-    int max_range_power = 4;
-```
+The usage of Path ORAM and rORAM provides a very similar setup, with there only being slight differences between both forms. More in depth descriptions are in their respective folders.
 
 
-
-
-### Configuration
-
-Modify `config.h` to adjust system parameters:
-```cpp
-const int bucket_size = 4;    // Blocks per bucket
-const int block_size = 2;     // Block size
-```
 
 ## Components
 

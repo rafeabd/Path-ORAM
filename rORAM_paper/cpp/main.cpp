@@ -9,12 +9,12 @@
 #include "../include/client.h"
 #include "../include/server.h"
 #include "../include/oram.h"
-
+#include <cstring>
 using namespace std;
 
 
 int main(int argc, char* argv[]) {
-    const int dataset_size_power = 14;
+    const int dataset_size_power = 4; // this is in 2^4
     const int num_blocks = 1 << dataset_size_power; 
     const vector<int> range_sizes = {
 
@@ -23,15 +23,15 @@ int main(int argc, char* argv[]) {
         1 << 3,
         1 << 4,  // 2^4 = 16
         //1 << 5,
-        1 << 6,
+        //1 << 6,
         //1 << 7,
-        1 << 8,
+        //1 << 8,
         //1 << 9,
-        1 << 10, // 2^10 = 1024
+        //1 << 10, // 2^10 = 1024
         //1 << 11,
-        1 << 12,
+        //1 << 12,
         //1 << 13,
-        1 << 14,  // 2^14 = 16384
+        //1 << 14,  // 2^14 = 16384
         //1 << 15
     };
 
@@ -42,7 +42,7 @@ int main(int argc, char* argv[]) {
     int num_buckets = (1 << power) - 1;
     int bucket_capacity = 4;
     
-    int max_range_power = 14; 
+    int max_range_power = 4; 
     int max_range = (1 << (max_range_power + 1)) + 1; 
 
     cout << "=== ORAM RANGE QUERY PERFORMANCE TEST ===" << endl;

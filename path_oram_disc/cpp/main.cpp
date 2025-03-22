@@ -50,7 +50,7 @@ int main() {
     // Read dataset file and load data
     
     //Update this file path for your computer, and ensure it's for the correct database
-    string datasetPath = "/mnt/c/Users/Roman/Documents/CSE108cProject/Path-ORAM/tests/2^10.txt"; 
+    string datasetPath = "/c/Users/Documents/Path-ORAM/tests/2^10.txt"; //update it for your file path
 
     cout << "Loading dataset from: " << datasetPath << endl;
     

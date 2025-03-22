@@ -20,24 +20,28 @@ This project implements the Range ORAM (Oblivious RAM) extension of Path ORAM sy
 ## Project Structure
 ```
 rORAM/
+├── cpp/
+│   ├── block.cpp
+│   ├── bucket.cpp
+│   ├── client.cpp
+│   ├── encryption.cpp
+│   ├── helper.cpp
+│   ├── main.cpp
+│   ├── oram.cpp
+│   └── server.cpp
 ├── include/
 │   ├── block.h
 │   ├── bucket.h
-│   ├── bst.h
 │   ├── client.h
 │   ├── config.h
 │   ├── encryption.h
+│   ├── helper.h
+│   ├── oram.h
 │   └── server.h
-├── src/
-│   ├── block.cpp
-│   ├── bucket.cpp
-│   ├── bst.cpp
-│   ├── client.cpp
-│   ├── encryption.cpp
-│   ├── main.cpp
-│   └── server.cpp
-└── tests/
-    └── data/
+├── Makefile
+├── readme.md
+└── trees/
+    
 ```
 
 ## Requirements
@@ -54,78 +58,61 @@ make
 ```
 
 ## Usage
+## rORAM - /Path-ORAM/rORAM/main.cpp
+The setup for the numbers of buckets and size of range query is on **main.cpp**
+
+First you need to ensure you have a folder called **trees** in rORAM_paper, as shown on the project structure. This stores your rORAM trees and it is not possible to build without this, if you don't have this, you need to create one.
+
+To set the total number of buckets, you simply change the following value.
+line 156:
 ```cpp
-// Initialize the system
-vector<unsigned char> key = generateEncryptionKey(32);
-BucketHeap oram_tree(num_buckets, bucket_capacity, key);
-Server server(num_blocks, bucket_capacity, oram_tree);
-Client client(num_blocks, &server, key);
-
-// Write data
-client.access(1, block_id, "data");
-
-// Read data
-block result = client.access(0, block_id, "");
-
-// Perform range query
-vector<block> results = client.range_query(start_id, end_id);
+//This would be interpreted at 2^22 buckets
+    const int num_buckets_low = pow(2,22);
 ```
 
-## Key Components
+line 160:
+This sets the range query sizes you would like to perform.
+```cpp
+// Define the range query sizes using exponents: 2^1, 2^4, 2^10
+    // Range query sizes to test: 2^1, 2^4, 2^10, 2^14
+    const vector<int> range_sizes = {
+        1 << 1,  // 2^1 = 2
+        1 << 2,
+        1 << 3,
+        1 << 4,  // 2^4 = 16
+```
 
-### Block
-Represents the fundamental data unit in the ORAM system. Each block contains:
-- Unique identifier
-- Target leaf position
-- Data content
-- Dummy flag
+Set the max range of your range query
+line 190:
+```cpp
+// Find max range needed (the largest of our test range sizes)
+    int max_range_power = 4;
+```
+## Building
 
-### Bucket
-Container for blocks in the ORAM tree:
-- Fixed capacity
-- Block management
-- Dummy block handling
+To build your rORAM trees, you simply need to do following sequence of commands:
+```cpp
+    cd rORAM_paper
+```
+```cpp
+    make
+```
+```cpp
+    ./executable/testing
+```
+Your rORAM trees will be built in the trees folder, and the result should be shown on terminal
 
-### BucketHeap
-Implements the binary tree structure:
-- Path management
-- Bucket organization
-- Tree operations
+Do 
+```cpp
+    make clean
+```
+To remove the created objects.
+## Common issue
 
-### Client
-Handles client-side operations:
-- Position map management
-- Stash handling
-- Access operations
-- Path retrieval/writing
-
-### Server
-Manages server-side operations:
-- ORAM tree maintenance
-- Path retrieval
-- Bucket updates
-
-## Security Features
-- AES-256-CBC encryption
-- Secure random number generation
-- Access pattern hiding
-- Dummy block padding
-
-## Performance
-- Access Time: O(log N)
-- Space Overhead: O(N)
-- Stash Size: O(log N)
-
-
-## Contributing
-1. Fork the repository
-2. Create your feature branch
-3. Commit your changes
-4. Push to the branch
-5. Create a Pull Request
-
-## License
-[MIT License](LICENSE)
-
-## Contact
-For questions and support, please open an issue in the repository.
+When first running path_oram_disc, assuming you make, you may encounter the following issue:
+```cpp
+    terminate called after throwing an instance of 'std::runtime_error'
+    what():  Failed to reopen file
+    Aborted (core dumped)
+```
+This is likely due to you missing a trees folder in rORAM_paper. Creating a folder should resolve this.

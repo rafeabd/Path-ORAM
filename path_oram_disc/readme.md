@@ -4,7 +4,7 @@
 This project implements a Path ORAM (Oblivious RAM) system with client-server architecture, providing secure and efficient data access with hidden access patterns. The implementation includes support for encryption, dynamic data management, and secure client-server communication.
 
 ## Features
-- Complete Path ORAM implementation
+- Complete Path ORAM implementation on disc
 - AES-256-CBC encryption
 - Secure client-server architecture
 - Random access pattern obfuscation
@@ -14,24 +14,24 @@ This project implements a Path ORAM (Oblivious RAM) system with client-server ar
 ## Project Structure
 ```
 path_oram_disc/
-├── include/
-│   ├── block.h
-│   ├── bucket.h
-│   ├── bst.h
-│   ├── client.h
-│   ├── config.h
-│   ├── encryption.h
-│   └── server.h
-├── src/
+├── cpp/
 │   ├── block.cpp
 │   ├── bucket.cpp
-│   ├── bst.cpp
 │   ├── client.cpp
 │   ├── encryption.cpp
 │   ├── main.cpp
-│   └── server.cpp
-├── tests/
-│   └── data/
+│   ├── oram.cpp
+│   └── server.cp
+├── include/
+│   ├── block.h
+│   ├── bucket.h
+│   ├── client.h
+│   ├── config.h
+│   ├── encryption.h
+│   ├── oram.h
+│   └── server.h
+├── Makefile
+├── readme.md
 └── tree/
 ```
 
@@ -43,6 +43,9 @@ path_oram_disc/
 ## Set-Up
 ## Path Oram - /Path-ORAM/path_oram_disc/main.cpp
 The setup for the numbers of buckets and size of range query is on **main.cpp**
+
+First you need to ensure you have a folder called **tree** in path_oram_disc, as shown on the project structure. This stores your Path ORAM tree and it is not possible to build without this, if you don't have this, you need to create one.
+
 
 To set the total number of buckets, you simply change the following value.
 line 23:
@@ -77,9 +80,13 @@ To build your Path ORAM tree, you simply need to do following sequence of comman
 ```cpp
     ./executable/testing
 ```
-
 Your Path ORAM tree will be built in the tree folder, and the result should be shown on terminal
 
+Do 
+```cpp
+    make clean
+```
+To remove the created objects.
 ## Common issue
 
 When first running path_oram_disc, assuming you make, you may encounter the following issue:
