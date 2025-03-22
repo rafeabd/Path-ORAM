@@ -28,8 +28,10 @@ to be retrieved. Our work implements two ORAM protocols:
 
 • Path ORAM: A foundational tree-based ORAM scheme that provides obliviousness for
 individual block accesses
+
 • Range ORAM (rORAM): An extension of Path ORAM that efficiently supports range
 queries while maintaining obliviousness
+
 ## Features
 
 * Full Path ORAM implementation
