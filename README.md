@@ -15,8 +15,21 @@
 
 ## Overview
 
-This project implements a Path ORAM (Oblivious RAM) system with an extension to rORAM, providing secure data access with hidden access patterns. It features a complete client-server architecture with encryption support, and in addition to this, builds on this implementing rORAM.
+Oblivious RAM (ORAM) protocols address the fundamental challenge of hiding access patterns to
+data stored on untrusted servers. Even when data is encrypted, the sequence of memory locations
+accessed can leak sensitive information about the underlying data and operations. This problem
+is particularly relevant in outsourced storage scenarios where a client stores sensitive data on an
+untrusted server.
+The goal of ORAM is to ensure that the access pattern observed by the server is independent of
+the actual pattern of data access by the client, thus preventing information leakage through access
+pattern analysis. While traditional ORAM protocols focus on individual block accesses, many real-
+world applications require efficient execution of range queries, where multiple adjacent blocks need
+to be retrieved. Our work implements two ORAM protocols:
 
+• Path ORAM: A foundational tree-based ORAM scheme that provides obliviousness for
+individual block accesses
+• Range ORAM (rORAM): An extension of Path ORAM that efficiently supports range
+queries while maintaining obliviousness
 ## Features
 
 * Full Path ORAM implementation
