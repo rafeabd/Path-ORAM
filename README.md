@@ -16,8 +16,7 @@ to be retrieved. Our work implements two ORAM protocols:
 • Path ORAM: A foundational tree-based ORAM scheme that provides obliviousness for
 individual block accesses
 
-• Range ORAM (rORAM): An extension of Path ORAM that efficiently supports range
-queries while maintaining obliviousness
+• rORAM: An extension of Path ORAM that improves upon Path ORAMs performance on larger range queries through techniques the usage of several Path ORAM trees, better position map management, batch evictions, and range aware path assignments. Our attach final report provides more in depth analysis.
 
 ## Features
 
