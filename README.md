@@ -1,4 +1,4 @@
-# Path ORAM Implementation
+# Path ORAM & rORAM Implementation
 
 ## Table of Contents
 - [Overview](#overview)
