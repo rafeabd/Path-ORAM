@@ -175,7 +175,7 @@ void Client::simple_batch_evict(int eviction_number, int range_power) {
     int evict_global = evict_counter[range_power];
     int height = this->L;  
 
-    for (int j = 0; j < height; j++) {
+    for (int j = height-1; j >= 0; j--) {
         int levelSize = (1 << j);
         int levelStartLogical = (1 << j) - 1;
 
